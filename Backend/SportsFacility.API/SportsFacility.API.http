@@ -1,0 +1,6 @@
+@SportsFacility.API_HostAddress = http://localhost:5228
+
+GET {{SportsFacility.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
