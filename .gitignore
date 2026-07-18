@@ -55,3 +55,10 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+/Backend/.vs/SportsFacility.API/v18
+/Backend/SportsFacility.API/.vs/SportsFacility.API
+/Backend/.vs/SportsFacility.API/config
+/Backend/.vs/SportsFacility.API/CopilotIndices/18.6.39611.21775
+/Backend/.vs/SportsFacility.API/FileContentIndex
+/Backend/SportsFacility.API/.vs/ProjectEvaluation
+/Backend/.vs/CopilotSnapshots/C9374399F663CE468FBFD63B78844BBF
