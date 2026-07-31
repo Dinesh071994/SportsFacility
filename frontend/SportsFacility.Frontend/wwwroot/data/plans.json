@@ -1,0 +1,32 @@
+[
+  {
+    "Id": "p1",
+    "ActivityId": "FitLife Gym",
+    "Name": "Monthly Solo",
+    "Type": "Individual",
+    "BillingCycle": "Monthly",
+    "Price": 1500,
+    "IsCouple": false,
+    "IsActive": true
+  },
+  {
+    "Id": "p2",
+    "ActivityId": "FitLife Gym",
+    "Name": "Quarterly Duo",
+    "Type": "Couple",
+    "BillingCycle": "Quarterly",
+    "Price": 8000,
+    "IsCouple": true,
+    "IsActive": true
+  },
+  {
+    "Id": "p3",
+    "ActivityId": "Smash Badminton",
+    "Name": "Half Yearly Ace",
+    "Type": "Individual",
+    "BillingCycle": "Half Yearly",
+    "Price": 6000,
+    "IsCouple": false,
+    "IsActive": true
+  }
+]

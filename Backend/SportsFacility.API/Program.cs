@@ -3,10 +3,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
+// using Microsoft.OpenApi.Models;
 using Serilog;
 using SportsFacility.Domain.Infra;
-using SportsFacility.Domain.Models;
+using SportsFacility.Infrastructure.Data;
 using SportsFacility.Domain.Services;
 using System.Text;
 using System.Text.Json;
@@ -26,6 +26,7 @@ builder.Services.AddControllers();
 
 // Configure Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new()
@@ -34,40 +35,9 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "API for managing sports facilities and bookings"
     });
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description = "JWT Authorization using Bearer scheme. Enter only your JWT token or 'Bearer {token}' depending on your configuration.",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT"
-    });
-    // Custom JSON serializer settings for Indian context
-    // Configure serializer for Swagger UI responses
-    // Newtonsoft or System.Text.Json settings for Swagger are handled by AddSwaggerGen/Swashbuckle defaults
 });
 
-var jwt = builder.Configuration.GetSection("Jwt");
 
-    builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-
-            ValidIssuer = jwt["Issuer"],
-            ValidAudience = jwt["Audience"],
-
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwt["Key"]!))
-        };
-    });
 
 // Configure CORS
 builder.Services.AddCors(options =>
@@ -82,12 +52,20 @@ builder.Services.AddCors(options =>
 
 // Database configuration
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<SportsFacilityDbContext>(options =>
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
 // Register services (use concrete interfaces from Domain)
-builder.Services.AddScoped<SportsFacility.Domain.Interface.IBookingService, BookingService>();
-builder.Services.AddScoped<SportsFacility.Domain.Services.AuthService>();
+builder.Services.AddScoped<SportsFacility.Domain.Interface.IAuthService, SportsFacility.Domain.Services.AuthService>();
+builder.Services.AddScoped<SportsFacility.Domain.Interface.IMembershipService, SportsFacility.Domain.Services.MembershipService>();
+builder.Services.AddScoped<SportsFacility.Domain.Interface.IBookingService, SportsFacility.Domain.Services.BookingService>();
+builder.Services.AddScoped<SportsFacility.Domain.Interface.IPaymentService, SportsFacility.Domain.Services.PaymentService>();
+builder.Services.AddScoped<SportsFacility.Domain.Interface.IClassService, SportsFacility.Domain.Services.ClassService>();
+builder.Services.AddScoped<SportsFacility.Domain.Interface.IFacilityService, SportsFacility.Domain.Services.FacilityService>();
+builder.Services.AddScoped<SportsFacility.Domain.Interface.IPlanService, SportsFacility.Domain.Services.PlanService>();
+builder.Services.AddScoped<SportsFacility.Domain.Interface.IStaffService, SportsFacility.Domain.Services.StaffService>();
+builder.Services.AddScoped<SportsFacility.Domain.Interface.IUserService, SportsFacility.Domain.Services.UserService>();
+builder.Services.AddScoped<SportsFacility.Domain.Interface.IDashboardService, SportsFacility.Domain.Services.DashboardService>();
 builder.Services.AddAutoMapper(typeof(Program));
 
 // JWT Authentication
@@ -143,8 +121,8 @@ app.MapHealthChecks("/health");
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<SportsFacilityDbContext>();
-    context.Database.EnsureCreated();
+    var context = services.GetRequiredService<ApplicationDbContext>();
+    // context.Database.EnsureCreated(); // Will use EF Migrations instead
 }
 
 // Configure API behavior
@@ -163,6 +141,7 @@ app.Use(async (context, next) =>
     await next();
 });
 
+app.MapControllers();
 app.Run();
 
 

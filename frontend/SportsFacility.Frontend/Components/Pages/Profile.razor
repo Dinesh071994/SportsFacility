@@ -1,0 +1,133 @@
+@page "/profile"
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthStateProvider
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IConfiguration Config
+
+<PageTitle>My Profile</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">My Profile</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4 text-center rounded-xl" Elevation="4">
+            <MudAvatar Color="Color.Primary" Style="height:100px; width:100px; font-size: 3rem;" Class="mb-4">
+                @(UserName?.FirstOrDefault().ToString() ?? "U")
+            </MudAvatar>
+            <MudText Typo="Typo.h5" Class="font-weight-bold">@UserName</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">@UserRole</MudText>
+            <MudChip T="string" Color="Color.Success" Size="Size.Small">Active Account</MudChip>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="8">
+        <MudPaper Class="pa-6 rounded-xl" Elevation="4">
+            <MudText Typo="Typo.h5" Class="font-weight-bold mb-4">Account Details</MudText>
+            <MudForm>
+                <MudTextField Value="@UserName" Label="Full Name" ReadOnly="true" Variant="Variant.Outlined" Class="mb-4" />
+                <MudTextField Value="@UserEmail" Label="Email Address" ReadOnly="true" Variant="Variant.Outlined" Class="mb-4" />
+                <MudTextField Value="@UserRole" Label="System Role" ReadOnly="true" Variant="Variant.Outlined" Class="mb-4" />
+                
+                <MudText Typo="Typo.h6" Class="mt-6 mb-2">Security</MudText>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.LockReset" OnClick="OpenResetPasswordDialog">Change Password</MudButton>
+            </MudForm>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <DialogContent>
+        <MudForm @ref="_form">
+            <MudTextField T="string" @bind-Value="_currentPassword" Label="Current Password" InputType="InputType.Password" Required="true" Class="mb-3"/>
+            <MudTextField T="string" @bind-Value="_newPassword" Label="New Password" InputType="InputType.Password" Required="true" Class="mb-3"/>
+            <MudTextField T="string" @bind-Value="_confirmPassword" Label="Confirm New Password" InputType="InputType.Password" Required="true" Validation="@(new Func<string, string>(PasswordMatch))" Class="mb-3"/>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveNewPassword">Update Password</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string UserName = "Loading...";
+    private string UserRole = "Loading...";
+    private string UserEmail = "Loading...";
+
+    private bool _dialogVisible;
+    private MudForm _form;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private string _currentPassword = "";
+    private string _newPassword = "";
+    private string _confirmPassword = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            UserName = user.Identity.Name ?? "Unknown";
+            UserEmail = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email || c.Type == "email" || c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value ?? "admin@sportsfacility.com";
+            UserRole = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value ?? "Staff";
+        }
+    }
+
+    private void OpenResetPasswordDialog()
+    {
+        _currentPassword = "";
+        _newPassword = "";
+        _confirmPassword = "";
+        _dialogVisible = true;
+    }
+
+    private void Cancel()
+    {
+        _dialogVisible = false;
+    }
+
+    private string PasswordMatch(string arg)
+    {
+        if (_newPassword != arg)
+            return "Passwords do not match";
+        return null;
+    }
+
+    private async Task SaveNewPassword()
+    {
+        await _form.Validate();
+        if (_form.IsValid)
+        {
+            if (Config["DataSourceMode"] == "Api")
+            {
+                var payload = new
+                {
+                    Email = UserEmail,
+                    CurrentPassword = _currentPassword,
+                    NewPassword = _newPassword
+                };
+
+                var response = await Http.PostAsJsonAsync("auth/change-password", payload);
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Password updated successfully!", Severity.Success);
+                    _dialogVisible = false;
+                }
+                else
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    Snackbar.Add(string.IsNullOrEmpty(error) ? "Failed to change password. Verify your current password." : error, Severity.Error);
+                }
+            }
+            else
+            {
+                Snackbar.Add("Password updated successfully (Mock Mode)!", Severity.Success);
+                _dialogVisible = false;
+            }
+        }
+    }
+}

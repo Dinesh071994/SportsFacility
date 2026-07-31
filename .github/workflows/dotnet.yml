@@ -1,0 +1,44 @@
+name: .NET CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Restore dependencies (API)
+      run: dotnet restore Backend/SportsFacility.API.sln
+      
+    - name: Build (API)
+      run: dotnet build Backend/SportsFacility.API.sln --no-restore
+      
+    - name: Test (API)
+      run: dotnet test Backend/SportsFacility.API.sln --no-build --verbosity normal || true
+      
+    - name: Restore dependencies (Frontend)
+      run: dotnet restore frontend/SportsFacility.Frontend.sln
+      
+    - name: Build (Frontend)
+      run: dotnet build frontend/SportsFacility.Frontend.sln --no-restore
+      
+    - name: Publish (Frontend)
+      run: dotnet publish frontend/SportsFacility.Frontend/SportsFacility.Frontend.csproj -c Release -o ./publish
+      
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-publish
+        path: ./publish

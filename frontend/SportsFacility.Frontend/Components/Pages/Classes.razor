@@ -1,0 +1,210 @@
+@page "/classes"
+@using MudBlazor
+@using SportsFacility.Frontend.Models
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject NavigationManager NavManager
+@inject IConfiguration Config
+
+<PageTitle>Class Management</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Classes & Schedules</MudText>
+
+<MudPaper Class="pa-4 rounded-xl mb-6" Elevation="4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5" Class="font-weight-bold">Scheduled Classes</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Class="rounded-lg" OnClick="OpenAddDialog">Schedule Class</MudButton>
+    </div>
+    
+    <MudDataGrid Items="@ClassesList" Dense="true" Filterable="true" SortMode="SortMode.Multiple">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Class Name" />
+            <PropertyColumn Property="x => x.TrainerName" Title="Trainer" />
+            <PropertyColumn Property="x => x.Date.ToShortDateString()" Title="Date" />
+            <TemplateColumn Title="Timing">
+                <CellTemplate>
+                    @($"{(context.Item.StartTime.HasValue ? context.Item.StartTime.Value.ToString(@"hh\:mm") : "")} - {(context.Item.EndTime.HasValue ? context.Item.EndTime.Value.ToString(@"hh\:mm") : "")}")
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.Capacity" Title="Capacity" />
+            <TemplateColumn Title="Attendance">
+                <CellTemplate>
+                    <MudChip T="string" Color="@(context.Item.Attendance >= context.Item.Capacity ? Color.Error : Color.Info)" Size="Size.Small">
+                        @context.Item.Attendance / @context.Item.Capacity
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <MudIconButton Icon="@Icons.Material.Filled.HowToReg" Size="Size.Small" Color="Color.Secondary" OnClick="() => MarkAttendance(context.Item)" Title="Mark Attendance" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => OpenEditDialog(context.Item)" Title="Edit" />
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <DialogContent>
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="currentClass.Name" Label="Class Name" Required="true" Class="mb-3"/>
+            <MudTextField @bind-Value="currentClass.TrainerName" Label="Trainer Name" Required="true" Class="mb-3"/>
+            <MudDatePicker @bind-Date="currentClass.DateNullable" Label="Date" Required="true" Class="mb-3"/>
+            <MudTimePicker @bind-Time="currentClass.StartTime" Label="Start Time" Required="true" Class="mb-3"/>
+            <MudTimePicker @bind-Time="currentClass.EndTime" Label="End Time" Required="true" Class="mb-3"/>
+            <MudNumericField @bind-Value="currentClass.Capacity" Label="Capacity" Required="true" Min="1" Class="mb-3"/>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<ClassModel> ClassesList = new();
+    private MudForm form;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Config["DataSourceMode"] == "Local")
+        {
+            try {
+                ClassesList = await Http.GetFromJsonAsync<List<ClassModel>>($"{NavManager.BaseUri}data/classes.json") ?? new List<ClassModel>();
+            } catch {
+                ClassesList = new List<ClassModel>();
+            }
+        }
+        else
+        {
+            ClassesList = await Http.GetFromJsonAsync<List<ClassModel>>("classes") ?? new List<ClassModel>();
+        }
+    }
+
+    private bool _dialogVisible;
+    private ClassModel currentClass = new();
+    private bool isEdit;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private void OpenAddDialog()
+    {
+        currentClass = new ClassModel { Date = DateTime.Today };
+        isEdit = false;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(ClassModel model)
+    {
+        currentClass = new ClassModel
+        {
+            Id = model.Id,
+            Name = model.Name,
+            TrainerName = model.TrainerName,
+            Date = model.Date,
+            StartTime = model.StartTime,
+            EndTime = model.EndTime,
+            Capacity = model.Capacity,
+            Attendance = model.Attendance
+        };
+        isEdit = true;
+        _dialogVisible = true;
+    }
+
+    private async Task MarkAttendance(ClassModel model)
+    {
+        if (model.Attendance < model.Capacity)
+        {
+            if (Config["DataSourceMode"] == "Api")
+            {
+                var response = await Http.PostAsync($"classes/{model.Id}/attendance", null);
+                if (response.IsSuccessStatusCode)
+                {
+                    model.Attendance++;
+                    Snackbar.Add($"Attendance marked! Total: {model.Attendance}/{model.Capacity}", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("Could not mark attendance in system", Severity.Error);
+                }
+            }
+            else
+            {
+                model.Attendance++;
+                Snackbar.Add($"Attendance marked! Total: {model.Attendance}/{model.Capacity}", Severity.Success);
+            }
+        }
+        else
+        {
+            Snackbar.Add("Class is at full capacity!", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task Save()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            if (Config["DataSourceMode"] == "Api")
+            {
+                if (isEdit)
+                {
+                    var response = await Http.PutAsJsonAsync($"classes/{currentClass.Id}", currentClass);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var existing = ClassesList.FirstOrDefault(x => x.Id == currentClass.Id);
+                        if (existing != null)
+                        {
+                            existing.Name = currentClass.Name;
+                            existing.TrainerName = currentClass.TrainerName;
+                            existing.Date = currentClass.Date;
+                            existing.StartTime = currentClass.StartTime;
+                            existing.EndTime = currentClass.EndTime;
+                            existing.Capacity = currentClass.Capacity;
+                        }
+                        Snackbar.Add("Class updated successfully", Severity.Success);
+                    }
+                }
+                else
+                {
+                    var response = await Http.PostAsJsonAsync("classes", currentClass);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var created = await response.Content.ReadFromJsonAsync<ClassModel>();
+                        if (created != null)
+                        {
+                            ClassesList.Add(created);
+                        }
+                        Snackbar.Add("Class scheduled successfully", Severity.Success);
+                    }
+                }
+            }
+            else
+            {
+                if (isEdit)
+                {
+                    var existing = ClassesList.FirstOrDefault(x => x.Id == currentClass.Id);
+                    if (existing != null)
+                    {
+                        existing.Name = currentClass.Name;
+                        existing.TrainerName = currentClass.TrainerName;
+                        existing.Date = currentClass.Date;
+                        existing.StartTime = currentClass.StartTime;
+                        existing.EndTime = currentClass.EndTime;
+                        existing.Capacity = currentClass.Capacity;
+                    }
+                }
+                else
+                {
+                    ClassesList.Add(currentClass);
+                }
+                Snackbar.Add("Class saved successfully", Severity.Success);
+            }
+            _dialogVisible = false;
+        }
+    }
+}

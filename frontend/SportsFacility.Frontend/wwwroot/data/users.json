@@ -1,0 +1,23 @@
+[
+  {
+    "id": "USR-001",
+    "name": "Super Admin",
+    "email": "super@sportsfacility.com",
+    "role": "SuperAdmin",
+    "isActive": true
+  },
+  {
+    "id": "USR-002",
+    "name": "Karan M",
+    "email": "admin@sportsfacility.com",
+    "role": "Admin",
+    "isActive": true
+  },
+  {
+    "id": "USR-003",
+    "name": "Deepak S",
+    "email": "reception@sportsfacility.com",
+    "role": "Receptionist",
+    "isActive": true
+  }
+]

@@ -62,3 +62,7 @@ nunit-*.xml
 /Backend/.vs/SportsFacility.API/FileContentIndex
 /Backend/SportsFacility.API/.vs/ProjectEvaluation
 /Backend/.vs/CopilotSnapshots/C9374399F663CE468FBFD63B78844BBF
+/Backend/.vs
+/frontend/.vs/SportsFacility.Frontend
+/frontend/.vs/ProjectEvaluation
+/frontend/SportsFacility.Frontend/Properties/PublishProfiles

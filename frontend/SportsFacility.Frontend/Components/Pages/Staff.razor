@@ -1,0 +1,189 @@
+@page "/staff"
+@using MudBlazor
+@using SportsFacility.Frontend.Models
+@inject HttpClient Http
+@inject NavigationManager NavManager
+@inject IConfiguration Config
+@inject ISnackbar Snackbar
+
+<PageTitle>Staff Management</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Staff Management</MudText>
+
+<MudPaper Class="pa-4 rounded-xl" Elevation="4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5" Class="font-weight-bold">Staff Directory</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Class="rounded-lg" OnClick="OpenAddDialog">Add Staff</MudButton>
+    </div>
+    
+    <MudDataGrid Items="@StaffList" Dense="true" Filterable="true" SortMode="SortMode.Multiple">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Name" />
+            <PropertyColumn Property="x => x.Role" Title="Role" />
+            <PropertyColumn Property="x => x.Phone" Title="Phone" />
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    @if (context.Item.IsActive)
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">Active</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Text">Inactive</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => OpenEditDialog(context.Item)" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteStaff(context.Item)" />
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <DialogContent>
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="currentStaff.Name" Label="Full Name" Required="true" Class="mb-3"/>
+            <MudSelect @bind-Value="currentStaff.Role" Label="Role" Required="true" Class="mb-3">
+                <MudSelectItem Value="@("Admin")" />
+                <MudSelectItem Value="@("Receptionist")" />
+                <MudSelectItem Value="@("Ground Staff")" />
+            </MudSelect>
+            <MudTextField @bind-Value="currentStaff.Phone" Label="Phone Number" Required="true" Class="mb-3"/>
+            <MudSwitch @bind-Value="currentStaff.IsActive" Label="Active Employee" Color="Color.Primary"/>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<StaffModel> StaffList = new();
+    private MudForm form;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Config["DataSourceMode"] == "Local")
+        {
+            StaffList = await Http.GetFromJsonAsync<List<StaffModel>>($"{NavManager.BaseUri}data/staff.json") ?? new List<StaffModel>();
+        }
+        else
+        {
+            StaffList = await Http.GetFromJsonAsync<List<StaffModel>>("staff") ?? new List<StaffModel>();
+        }
+    }
+
+    private bool _dialogVisible;
+    private StaffModel currentStaff = new();
+    private bool isEdit;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private void OpenAddDialog()
+    {
+        currentStaff = new StaffModel { IsActive = true };
+        isEdit = false;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(StaffModel staff)
+    {
+        currentStaff = new StaffModel
+        {
+            Id = staff.Id,
+            Name = staff.Name,
+            Role = staff.Role,
+            Phone = staff.Phone,
+            IsActive = staff.IsActive
+        };
+        isEdit = true;
+        _dialogVisible = true;
+    }
+
+    private async Task DeleteStaff(StaffModel staff)
+    {
+        if (Config["DataSourceMode"] == "Api")
+        {
+            var response = await Http.DeleteAsync($"staff/{staff.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                StaffList.Remove(staff);
+                Snackbar.Add("Staff removed successfully", Severity.Success);
+            }
+        }
+        else
+        {
+            StaffList.Remove(staff);
+            Snackbar.Add("Staff removed", Severity.Success);
+        }
+    }
+
+    private void Cancel()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task Save()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            if (Config["DataSourceMode"] == "Api")
+            {
+                if (isEdit)
+                {
+                    var response = await Http.PutAsJsonAsync($"staff/{currentStaff.Id}", currentStaff);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var existing = StaffList.FirstOrDefault(x => x.Id == currentStaff.Id);
+                        if (existing != null)
+                        {
+                            existing.Name = currentStaff.Name;
+                            existing.Role = currentStaff.Role;
+                            existing.Phone = currentStaff.Phone;
+                            existing.IsActive = currentStaff.IsActive;
+                        }
+                        Snackbar.Add("Staff updated successfully", Severity.Success);
+                    }
+                }
+                else
+                {
+                    var response = await Http.PostAsJsonAsync("staff", currentStaff);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var created = await response.Content.ReadFromJsonAsync<StaffModel>();
+                        if (created != null)
+                        {
+                            StaffList.Add(created);
+                        }
+                        Snackbar.Add("Staff created successfully", Severity.Success);
+                    }
+                }
+            }
+            else
+            {
+                if (isEdit)
+                {
+                    var existing = StaffList.FirstOrDefault(x => x.Id == currentStaff.Id);
+                    if (existing != null)
+                    {
+                        existing.Name = currentStaff.Name;
+                        existing.Role = currentStaff.Role;
+                        existing.Phone = currentStaff.Phone;
+                        existing.IsActive = currentStaff.IsActive;
+                    }
+                }
+                else
+                {
+                    StaffList.Add(currentStaff);
+                }
+                Snackbar.Add("Staff saved successfully", Severity.Success);
+            }
+            _dialogVisible = false;
+        }
+    }
+}

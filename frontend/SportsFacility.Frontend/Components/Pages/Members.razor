@@ -1,0 +1,287 @@
+@page "/members"
+@using MudBlazor
+@using SportsFacility.Frontend.Models
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject NavigationManager NavManager
+@inject IConfiguration Config
+
+<PageTitle>Memberships</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Memberships</MudText>
+
+<MudPaper Class="pa-4 rounded-xl" Elevation="4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5" Class="font-weight-bold">Active Members</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" Class="rounded-lg" OnClick="OpenAddDialog">Add Member</MudButton>
+    </div>
+    
+    <MudDataGrid T="MemberModel" ServerData="@LoadMembers" @ref="grid" Dense="true" Filterable="true" SortMode="SortMode.Multiple" RowsPerPage="10">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Name" />
+            <PropertyColumn Property="x => x.Phone" Title="Phone" />
+            <PropertyColumn Property="x => x.MembershipType" Title="Type" />
+            <PropertyColumn Property="x => x.Plan" Title="Plan" />
+            <PropertyColumn Property="x => x.ExpiryDate.ToShortDateString()" Title="Expiry Date" />
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    @if (context.Item.ExpiryDate > DateTime.Now)
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">Active</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Text">Expired</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => OpenEditDialog(context.Item)" Title="Edit" />
+                   @*  <MudIconButton Icon="@Icons.Material.Filled.QrCode" Size="Size.Small" Color="Color.Secondary" OnClick="() => ViewQRCode(context.Item)" Title="Show QR" />
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small" OnClick="() => RenewMember(context.Item)">Renew</MudButton> *@
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="MemberModel" PageSizeOptions="new int[] { 10, 20, 50 }" />
+        </PagerContent>
+    </MudDataGrid>
+</MudPaper>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <DialogContent>
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="currentMember.Name" Label="Full Name" Required="true" Class="mb-3"/>
+            <MudTextField @bind-Value="currentMember.Phone" Label="Phone Number" Required="true" Class="mb-3"/>
+            <MudSelect @bind-Value="currentMember.MembershipType" Label="Membership Type" Required="true" Class="mb-3">
+                <MudSelectItem Value="@("Individual")" />
+                <MudSelectItem Value="@("Couple")" />
+                <MudSelectItem Value="@("Family")" />
+                <MudSelectItem Value="@("Corporate")" />
+            </MudSelect>
+            <MudSelect @bind-Value="currentMember.Plan" Label="Plan" Required="true" Class="mb-3">
+                @foreach(var plan in PlansList.Where(p => p.IsActive || p.Name == currentMember.Plan))
+                {
+                    <MudSelectItem Value="@plan.Name">@plan.Name (@plan.Type)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudDatePicker @bind-Date="currentMember.ExpiryDateNullable" Label="Expiry Date" Required="true" Class="mb-3"/>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<MemberModel> MembersList = new();
+    private List<MembershipModel> PlansList = new();
+    private MudForm form;
+    private MudDataGrid<MemberModel> grid;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Config["DataSourceMode"] == "Local")
+        {
+            try {
+                PlansList = await Http.GetFromJsonAsync<List<MembershipModel>>($"{NavManager.BaseUri}data/plans.json") ?? new List<MembershipModel>();
+            } catch {
+                PlansList = new List<MembershipModel>();
+            }
+        }
+        else
+        {
+            PlansList = await Http.GetFromJsonAsync<List<MembershipModel>>("plans") ?? new List<MembershipModel>();
+        }
+    }
+
+    private async Task<GridData<MemberModel>> LoadMembers(GridState<MemberModel> state, System.Threading.CancellationToken token)
+    {
+        try
+        {
+            if (Config["DataSourceMode"] == "Local")
+            {
+                if (MembersList == null || !MembersList.Any())
+                {
+                    MembersList = await Http.GetFromJsonAsync<List<MemberModel>>($"{NavManager.BaseUri}data/members.json") ?? new List<MemberModel>();
+                    PlansList = await Http.GetFromJsonAsync<List<MembershipModel>>($"{NavManager.BaseUri}data/plans.json") ?? new List<MembershipModel>();
+                }
+
+                var ordered = MembersList.OrderByDescending(m => m.ModifiedOn ?? m.ExpiryDate).ToList();
+                var items = ordered.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+
+                return new GridData<MemberModel>
+                {
+                    TotalItems = MembersList.Count,
+                    Items = items
+                };
+            }
+            else
+            {
+                var pageNumber = state.Page + 1;
+                var pageSize = state.PageSize;
+
+                var result = await Http.GetFromJsonAsync<PaginatedResult<MemberModel>>($"members?pageNumber={pageNumber}&pageSize={pageSize}");
+
+                return new GridData<MemberModel>
+                {
+                    TotalItems = result?.TotalCount ?? 0,
+                    Items = result?.Items ?? new List<MemberModel>()
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading members: {ex.Message}", Severity.Error);
+            return new GridData<MemberModel> { Items = new List<MemberModel>(), TotalItems = 0 };
+        }
+    }
+
+    private bool _dialogVisible;
+    private MemberModel currentMember = new();
+    private bool isEdit;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private void OpenAddDialog()
+    {
+        currentMember = new MemberModel { ExpiryDate = DateTime.Now.AddMonths(1), ModifiedOn = DateTime.UtcNow };
+        isEdit = false;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(MemberModel member)
+    {
+        currentMember = new MemberModel
+        {
+            Id = member.Id,
+            Name = member.Name,
+            Phone = member.Phone,
+            MembershipType = member.MembershipType,
+            Plan = member.Plan,
+            ExpiryDate = member.ExpiryDate,
+            QREntryCode = member.QREntryCode,
+            ModifiedOn = DateTime.UtcNow
+        };
+        isEdit = true;
+        _dialogVisible = true;
+    }
+
+    private void ViewQRCode(MemberModel member)
+    {
+        Snackbar.Add($"QR Entry Code for {member.Name}: {member.QREntryCode}", Severity.Info);
+    }
+
+    private async Task RenewMember(MemberModel member)
+    {
+        var newExpiry = member.ExpiryDate < DateTime.Now ? DateTime.Now.AddMonths(1) : member.ExpiryDate.AddMonths(1);
+        
+        if (Config["DataSourceMode"] == "Api")
+        {
+            var selectedPlan = PlansList.FirstOrDefault(p => p.Name == member.Plan);
+            var dto = new MemberCreateDto
+            {
+                Name = member.Name,
+                Phone = member.Phone,
+                Email = member.Name.Replace(" ", "").ToLower() + "@example.com",
+                MembershipType = member.MembershipType,
+                PlanId = selectedPlan?.Id ?? Guid.Empty.ToString(),
+                ExpiryDate = newExpiry
+            };
+
+            var response = await Http.PutAsJsonAsync($"members/{member.Id}", dto);
+            if (response.IsSuccessStatusCode)
+            {
+                member.ExpiryDate = newExpiry;
+                Snackbar.Add("Membership renewed successfully", Severity.Success);
+            }
+        }
+        else
+        {
+            member.ExpiryDate = newExpiry;
+        }
+    }
+
+    private void Cancel()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task Save()
+    {
+        await form.ValidateAsync();
+        if (form.IsValid)
+        {
+            currentMember.ModifiedOn = DateTime.UtcNow;
+            if (Config["DataSourceMode"] == "Api")
+            {
+                var selectedPlan = PlansList.FirstOrDefault(p => p.Name == currentMember.Plan);
+                var dto = new MemberCreateDto
+                {
+                    Name = currentMember.Name,
+                    Phone = currentMember.Phone,
+                    Email = currentMember.Name.Replace(" ", "").ToLower() + "@example.com",
+                    MembershipType = currentMember.MembershipType,
+                    PlanId = selectedPlan?.Id ?? Guid.Empty.ToString(),
+                    ExpiryDate = currentMember.ExpiryDate
+                };
+
+                if (isEdit)
+                {
+                    var response = await Http.PutAsJsonAsync($"members/{currentMember.Id}", dto);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var existing = MembersList.FirstOrDefault(x => x.Id == currentMember.Id);
+                        if (existing != null)
+                        {
+                            existing.Name = currentMember.Name;
+                            existing.Phone = currentMember.Phone;
+                            existing.MembershipType = currentMember.MembershipType;
+                            existing.Plan = currentMember.Plan;
+                            existing.ExpiryDate = currentMember.ExpiryDate;
+                        }
+                        Snackbar.Add("Member updated successfully", Severity.Success);
+                    }
+                }
+                else
+                {
+                    var response = await Http.PostAsJsonAsync("members", dto);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var created = await response.Content.ReadFromJsonAsync<MemberModel>();
+                        if (created != null)
+                        {
+                            MembersList.Add(created);
+                        }
+                        Snackbar.Add("Member created successfully", Severity.Success);
+                    }
+                }
+            }
+            else
+            {
+                if (isEdit)
+                {
+                    var existing = MembersList.FirstOrDefault(x => x.Id == currentMember.Id);
+                    if (existing != null)
+                    {
+                        existing.Name = currentMember.Name;
+                        existing.Phone = currentMember.Phone;
+                        existing.MembershipType = currentMember.MembershipType;
+                        existing.Plan = currentMember.Plan;
+                        existing.ExpiryDate = currentMember.ExpiryDate;
+                    }
+                }
+                else
+                {
+                    MembersList.Add(currentMember);
+                }
+            }
+            if (grid != null)
+            {
+                await grid.ReloadServerData();
+            }
+            _dialogVisible = false;
+        }
+    }
+}

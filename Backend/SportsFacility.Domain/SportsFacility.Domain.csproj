@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -14,11 +14,13 @@
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.19.2" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.19.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="6.30.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.19.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SportsFacility.DTO\SportsFacility.DTO.csproj" />
+    <ProjectReference Include="..\SportsFacility.Entity\SportsFacility.Entity.csproj" />
+    <ProjectReference Include="..\SportsFacility.Infrastructure\SportsFacility.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

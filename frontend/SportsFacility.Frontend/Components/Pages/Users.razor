@@ -1,0 +1,239 @@
+@page "/users"
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using SportsFacility.Frontend.Models
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject IConfiguration Config
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<PageTitle>User Management</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">System Users</MudText>
+
+<MudPaper Class="pa-4 rounded-xl" Elevation="4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5" Class="font-weight-bold">Registered Users</MudText>
+        <AuthorizeView Roles="SuperAdmin,Admin">
+            <Authorized>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" Class="rounded-lg" OnClick="OpenAddDialog">Create User</MudButton>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+    
+    <MudDataGrid Items="@UsersList" Dense="true" Filterable="true" SortMode="SortMode.Multiple">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Name" />
+            <PropertyColumn Property="x => x.Email" Title="Email" />
+            <PropertyColumn Property="x => x.Role" Title="System Role" />
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    @if (context.Item.IsActive)
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">Active</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Text">Disabled</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <AuthorizeView Roles="SuperAdmin,Admin" Context="authContext">
+                        <Authorized>
+                            @if (authContext.User.IsInRole("SuperAdmin") || (authContext.User.IsInRole("Admin") && context.Item.Role != "SuperAdmin"))
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => OpenEditDialog(context.Item)" />
+                                <MudIconButton Icon="@Icons.Material.Filled.VpnKey" Size="Size.Small" Color="Color.Warning" OnClick="() => OpenResetPassword(context.Item)" Title="Reset Password" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteUser(context.Item)" />
+                            }
+                        </Authorized>
+                    </AuthorizeView>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <DialogContent>
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="currentUser.Name" Label="Full Name" Required="true" Class="mb-3"/>
+            <MudTextField @bind-Value="currentUser.Email" Label="Email Address" Required="true" Class="mb-3"/>
+            <MudSelect @bind-Value="currentUser.Role" Label="Role" Required="true" Class="mb-3">
+                <AuthorizeView Roles="SuperAdmin" Context="saContext">
+                    <Authorized>
+                        <MudSelectItem Value="@("SuperAdmin")" />
+                    </Authorized>
+                </AuthorizeView>
+                <MudSelectItem Value="@("Admin")" />
+                <MudSelectItem Value="@("Receptionist")" />
+                <MudSelectItem Value="@("Staff")" />
+            </MudSelect>
+            <MudSwitch @bind-Value="currentUser.IsActive" Label="Account Active" Color="Color.Primary"/>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save User</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<UserModel> UsersList = new();
+    private ClaimsPrincipal currentAuthUser;
+    private MudForm form;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        currentAuthUser = authState.User;
+
+        if (Config["DataSourceMode"] == "Local")
+        {
+            UsersList = await Http.GetFromJsonAsync<List<UserModel>>($"{NavManager.BaseUri}data/users.json") ?? new List<UserModel>();
+        }
+        else
+        {
+            UsersList = await Http.GetFromJsonAsync<List<UserModel>>("users") ?? new List<UserModel>();
+        }
+    }
+
+    private bool _dialogVisible;
+    private UserModel currentUser = new();
+    private bool isEdit;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private void OpenAddDialog()
+    {
+        currentUser = new UserModel { IsActive = true };
+        isEdit = false;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(UserModel user)
+    {
+        currentUser = new UserModel
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            IsActive = user.IsActive
+        };
+        isEdit = true;
+        _dialogVisible = true;
+    }
+
+    private async Task OpenResetPassword(UserModel user)
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to reset the password for {user.Name} to 'Welcome@123'?");
+            
+        if (confirmed)
+        {
+            if (Config["DataSourceMode"] == "Api")
+            {
+                var response = await Http.PostAsJsonAsync($"users/{user.Id}/reset-password", new { NewPassword = "Welcome@123" });
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add($"Password reset to 'Welcome@123' for {user.Name}", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("Failed to reset password", Severity.Error);
+                }
+            }
+            else
+            {
+                Snackbar.Add($"Password reset to 'Welcome@123' for {user.Name} (Mock Mode)", Severity.Success);
+            }
+        }
+    }
+
+    private async Task DeleteUser(UserModel user)
+    {
+        if (Config["DataSourceMode"] == "Api")
+        {
+            var response = await Http.DeleteAsync($"users/{user.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                UsersList.Remove(user);
+                Snackbar.Add("User deleted successfully", Severity.Success);
+            }
+        }
+        else
+        {
+            UsersList.Remove(user);
+            Snackbar.Add("User deleted", Severity.Success);
+        }
+    }
+
+    private void Cancel()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task Save()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            if (Config["DataSourceMode"] == "Api")
+            {
+                if (isEdit)
+                {
+                    var response = await Http.PutAsJsonAsync($"users/{currentUser.Id}", currentUser);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var existing = UsersList.FirstOrDefault(x => x.Id == currentUser.Id);
+                        if (existing != null)
+                        {
+                            existing.Name = currentUser.Name;
+                            existing.Email = currentUser.Email;
+                            existing.Role = currentUser.Role;
+                            existing.IsActive = currentUser.IsActive;
+                        }
+                        Snackbar.Add("User updated successfully", Severity.Success);
+                    }
+                }
+                else
+                {
+                    var response = await Http.PostAsJsonAsync("users", currentUser);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var created = await response.Content.ReadFromJsonAsync<UserModel>();
+                        if (created != null)
+                        {
+                            UsersList.Add(created);
+                        }
+                        Snackbar.Add("User created successfully", Severity.Success);
+                    }
+                }
+            }
+            else
+            {
+                if (isEdit)
+                {
+                    var existing = UsersList.FirstOrDefault(x => x.Id == currentUser.Id);
+                    if (existing != null)
+                    {
+                        existing.Name = currentUser.Name;
+                        existing.Email = currentUser.Email;
+                        existing.Role = currentUser.Role;
+                        existing.IsActive = currentUser.IsActive;
+                    }
+                }
+                else
+                {
+                    UsersList.Add(currentUser);
+                }
+                Snackbar.Add("User saved successfully", Severity.Success);
+            }
+            _dialogVisible = false;
+        }
+    }
+}

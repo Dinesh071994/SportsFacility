@@ -1,0 +1,258 @@
+@page "/bookings"
+@using MudBlazor
+@using SportsFacility.Frontend.Models
+@inject HttpClient Http
+@inject NavigationManager NavManager
+@inject IConfiguration Config
+@inject ISnackbar Snackbar
+
+<PageTitle>Bookings</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Bookings</MudText>
+
+<MudStack Spacing="4">
+    <MudPaper Class="pa-4 rounded-xl" Elevation="4">
+        <div class="d-flex justify-space-between align-center mb-4">
+            <MudText Typo="Typo.h5" Class="font-weight-bold">Manage Bookings</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="rounded-lg" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenAddDialog">New Booking</MudButton>
+        </div>
+        
+        <MudDataGrid T="BookingModel" ServerData="@LoadBookings" @ref="grid" Dense="true" Filterable="true" SortMode="SortMode.Multiple" RowsPerPage="10">
+            <Columns>
+                <PropertyColumn Property="x => x.Id" Title="Booking ID" />
+                <PropertyColumn Property="x => x.CustomerName" Title="Customer" />
+                <PropertyColumn Property="x => x.FacilityName" Title="Facility" />
+                <PropertyColumn Property="x => x.Date.HasValue ? x.Date.Value.ToShortDateString() : string.Empty" Title="Date" />
+                <PropertyColumn Property="x => x.TimeSlot" Title="Time Slot" />
+                <TemplateColumn Title="Payment Status">
+                    <CellTemplate>
+                        @if (context.Item.IsPaid)
+                        {
+                            <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">Paid (@context.Item.PaymentMode)</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Text">Unpaid</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Actions">
+                    <CellTemplate>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => OpenEditDialog(context.Item)" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteBooking(context.Item)" />
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+            <PagerContent>
+                <MudDataGridPager T="BookingModel" PageSizeOptions="new int[] { 10, 20, 50 }" />
+            </PagerContent>
+        </MudDataGrid>
+    </MudPaper>
+</MudStack>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <DialogContent>
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="currentBooking.CustomerName" Label="Customer Name" Required="true" Class="mb-3"/>
+            <MudSelect @bind-Value="currentBooking.FacilityName" Label="Facility" Required="true" Class="mb-3">
+                @foreach (var facility in FacilitiesList.Where(f => f.IsActive || f.Name == currentBooking.FacilityName))
+                {
+                    <MudSelectItem Value="@facility.Name">@facility.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudDatePicker @bind-Date="currentBooking.Date" Label="Date" Required="true" Class="mb-3"/>
+            <MudTimePicker @bind-Time="currentBooking.Time" Label="Start Time" Required="true" Class="mb-3"/>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save Booking</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _dialogVisible;
+    private MudForm form;
+    private bool isEdit;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    
+    private BookingModel currentBooking = new();
+    private List<BookingModel> BookingsList = new();
+    private List<ActivityModel> FacilitiesList = new();
+    private MudDataGrid<BookingModel> grid;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Config["DataSourceMode"] == "Local")
+        {
+            FacilitiesList = await Http.GetFromJsonAsync<List<ActivityModel>>($"{NavManager.BaseUri}data/activities.json") ?? new List<ActivityModel>();
+        }
+        else
+        {
+            FacilitiesList = await Http.GetFromJsonAsync<List<ActivityModel>>("activities") ?? new List<ActivityModel>();
+        }
+    }
+
+    private async Task<GridData<BookingModel>> LoadBookings(GridState<BookingModel> state, System.Threading.CancellationToken token)
+    {
+        try
+        {
+            if (Config["DataSourceMode"] == "Local")
+            {
+                if (BookingsList == null || !BookingsList.Any())
+                {
+                    BookingsList = await Http.GetFromJsonAsync<List<BookingModel>>($"{NavManager.BaseUri}data/bookings.json") ?? new List<BookingModel>();
+                    FacilitiesList = await Http.GetFromJsonAsync<List<ActivityModel>>($"{NavManager.BaseUri}data/activities.json") ?? new List<ActivityModel>();
+                }
+
+                var ordered = BookingsList.OrderByDescending(b => b.ModifiedOn ?? b.Date).ToList();
+                var items = ordered.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+
+                return new GridData<BookingModel>
+                {
+                    TotalItems = BookingsList.Count,
+                    Items = items
+                };
+            }
+            else
+            {
+                var pageNumber = state.Page + 1;
+                var pageSize = state.PageSize;
+
+                var result = await Http.GetFromJsonAsync<PaginatedResult<BookingModel>>($"bookings?pageNumber={pageNumber}&pageSize={pageSize}");
+
+                return new GridData<BookingModel>
+                {
+                    TotalItems = result?.TotalCount ?? 0,
+                    Items = result?.Items ?? new List<BookingModel>()
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading bookings: {ex.Message}", Severity.Error);
+            return new GridData<BookingModel> { Items = new List<BookingModel>(), TotalItems = 0 };
+        }
+    }
+
+    private void OpenAddDialog()
+    {
+        currentBooking = new BookingModel
+        {
+            PaymentMode = "Pending",
+            UTRNumber = "",
+            ModifiedOn = DateTime.UtcNow
+        };
+        isEdit = false;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(BookingModel booking)
+    {
+        currentBooking = new BookingModel
+        {
+            Id = booking.Id,
+            CustomerName = booking.CustomerName,
+            FacilityName = booking.FacilityName,
+            Date = booking.Date,
+            Time = booking.Time,
+            PaymentMode = booking.PaymentMode,
+            UTRNumber = booking.UTRNumber,
+            ModifiedOn = DateTime.UtcNow
+        };
+        isEdit = true;
+        _dialogVisible = true;
+    }
+
+    private async Task DeleteBooking(BookingModel booking)
+    {
+        if (Config["DataSourceMode"] == "Api")
+        {
+            var response = await Http.DeleteAsync($"bookings/{booking.Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                BookingsList.Remove(booking);
+            }
+        }
+        else
+        {
+            BookingsList.Remove(booking);
+        }
+        if (grid != null)
+        {
+            await grid.ReloadServerData();
+        }
+    }
+
+    private void Cancel()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task Save()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            currentBooking.ModifiedOn = DateTime.UtcNow;
+            if (Config["DataSourceMode"] == "Api")
+            {
+                if (isEdit)
+                {
+                    var response = await Http.PutAsJsonAsync($"bookings/{currentBooking.Id}", currentBooking);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var existing = BookingsList.FirstOrDefault(x => x.Id == currentBooking.Id);
+                        if (existing != null)
+                        {
+                            existing.CustomerName = currentBooking.CustomerName;
+                            existing.FacilityName = currentBooking.FacilityName;
+                            existing.Date = currentBooking.Date;
+                            existing.Time = currentBooking.Time;
+                            existing.PaymentMode = currentBooking.PaymentMode;
+                            existing.UTRNumber = currentBooking.UTRNumber;
+                        }
+                    }
+                }
+                else
+                {
+                    var response = await Http.PostAsJsonAsync("bookings", currentBooking);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var created = await response.Content.ReadFromJsonAsync<BookingModel>();
+                        if (created != null)
+                        {
+                            BookingsList.Add(created);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (isEdit)
+                {
+                    var existing = BookingsList.FirstOrDefault(x => x.Id == currentBooking.Id);
+                    if (existing != null)
+                    {
+                        existing.CustomerName = currentBooking.CustomerName;
+                        existing.FacilityName = currentBooking.FacilityName;
+                        existing.Date = currentBooking.Date;
+                        existing.Time = currentBooking.Time;
+                        existing.PaymentMode = currentBooking.PaymentMode;
+                        existing.UTRNumber = currentBooking.UTRNumber;
+                    }
+                }
+                else
+                {
+                    currentBooking.Id = "BK-" + (1000 + BookingsList.Count + 1).ToString();
+                    BookingsList.Add(currentBooking);
+                }
+            }
+            if (grid != null)
+            {
+                await grid.ReloadServerData();
+            }
+            _dialogVisible = false;
+        }
+    }
+}

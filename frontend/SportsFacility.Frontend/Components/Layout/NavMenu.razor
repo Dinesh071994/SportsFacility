@@ -1,0 +1,16 @@
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+    <MudNavLink Href="bookings" Icon="@Icons.Material.Filled.CalendarMonth">Bookings</MudNavLink>
+    <MudNavLink Href="activities" Icon="@Icons.Material.Filled.SportsTennis">Facilities</MudNavLink>
+    <MudNavLink Href="plans" Icon="@Icons.Material.Filled.CardMembership">Plans</MudNavLink>
+    @* <MudNavLink Href="classes" Icon="@Icons.Material.Filled.FitnessCenter">Classes</MudNavLink> *@
+    <MudNavLink Href="members" Icon="@Icons.Material.Filled.People">Members</MudNavLink>
+    <MudNavLink Href="payments" Icon="@Icons.Material.Filled.Payments">Payments</MudNavLink>
+    <MudNavLink Href="staff" Icon="@Icons.Material.Filled.Badge">Staff</MudNavLink>
+    <AuthorizeView Roles="SuperAdmin,Admin">
+        <Authorized>
+            <MudNavLink Href="users" Icon="@Icons.Material.Filled.ManageAccounts">System Users</MudNavLink>
+        </Authorized>
+    </AuthorizeView>
+    <MudNavLink Href="profile" Icon="@Icons.Material.Filled.Person">My Profile</MudNavLink>
+</MudNavMenu>

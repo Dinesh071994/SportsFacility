@@ -1,0 +1,301 @@
+@page "/payments"
+@using MudBlazor
+@using SportsFacility.Frontend.Models
+@inject HttpClient Http
+@inject NavigationManager NavManager
+@inject IConfiguration Config
+@inject ISnackbar Snackbar
+
+<PageTitle>Payment Records</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Payments</MudText>
+
+<MudPaper Class="pa-4 rounded-xl" Elevation="4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5" Class="font-weight-bold">Recent Transactions</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Class="rounded-lg" OnClick="OpenAddDialog">Add Payment</MudButton>
+    </div>
+    
+    <MudDataGrid T="PaymentModel" ServerData="@LoadPayments" @ref="grid" Dense="true" Filterable="true" SortMode="SortMode.Multiple" RowsPerPage="10">
+        <Columns>
+            <PropertyColumn Property="x => x.TransactionId" Title="Txn ID" />
+            <PropertyColumn Property="x => x.Date.ToShortDateString()" Title="Date" />
+            <PropertyColumn Property="x => x.Amount" Title="Amount (₹)" />
+            <PropertyColumn Property="x => x.Mode" Title="Payment Mode" />
+            <PropertyColumn Property="x => x.UTR" Title="PhonePe UTR" />
+            <PropertyColumn Property="x => x.Purpose" Title="Purpose" />
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Text">Completed</MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => OpenEditDialog(context.Item)" />
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <PagerContent>
+            <MudDataGridPager T="PaymentModel" PageSizeOptions="new int[] { 10, 20, 50 }" />
+        </PagerContent>
+    </MudDataGrid>
+</MudPaper>
+<AppLoader IsLoading="_loading"
+           Message="Please wait..." />
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <DialogContent>
+        <MudForm @ref="form">
+            @if (!isEdit)
+            {
+                <MudRadioGroup T="string" Value="paymentType" ValueChanged="OnPaymentTypeChanged" Label="Payment Type" Class="mb-3">
+                    <MudRadio Value="@("Individual")" Color="Color.Primary">Individual</MudRadio>
+                    <MudRadio Value="@("Booking Payment")" Color="Color.Primary">Booking Payment</MudRadio>
+                </MudRadioGroup>
+                
+                @if (paymentType == "Booking Payment")
+                {
+                    <MudSelect T="string" Value="selectedBookingId" ValueChanged="OnBookingSelected" Label="Unpaid Booking" Required="true" Class="mb-3">
+                        @foreach (var booking in UnpaidBookings)
+                        {
+                            <MudSelectItem Value="@booking.Id">@($"{booking.CustomerName} - {booking.FacilityName} ({booking.Date?.ToShortDateString()})")</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+            }
+            <MudTextField @bind-Value="currentPayment.Purpose" Label="Purpose" Required="true" Class="mb-3" Disabled="@(paymentType == "Booking Payment")" />
+            <MudNumericField @bind-Value="currentPayment.Amount" Label="Amount (₹)" Required="true" Min="1" Class="mb-3" />
+            <MudDatePicker @bind-Date="currentPayment.DateNullable" Label="Date" Required="true" Class="mb-3"/>
+            <MudSelect @bind-Value="currentPayment.Mode" Label="Mode" Required="true" Class="mb-3">
+                <MudSelectItem Value="@("Cash")" />
+                <MudSelectItem Value="@("Online")" />
+            </MudSelect>
+            @if (currentPayment.Mode == "Online")
+            {
+                <MudTextField @bind-Value="currentPayment.UTR" Label="UTR Number" Required="true" Class="mb-3"/>
+            }
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<PaymentModel> PaymentsList = new();
+    private List<BookingModel> BookingsList = new();
+    private List<BookingModel> UnpaidBookings = new();
+    
+    private string paymentType = "Individual";
+    private string selectedBookingId = "";
+    private MudForm form;
+    private MudDataGrid<PaymentModel> grid;
+    private bool _loading;
+    protected override async Task OnInitializedAsync()
+    {
+        // Handled dynamically by ServerData LoadPayments
+    }
+
+    private async Task RefreshData()
+    {
+        _loading = true;
+        if (Config["DataSourceMode"] == "Local")
+        {
+            BookingsList = await Http.GetFromJsonAsync<List<BookingModel>>($"{NavManager.BaseUri}data/bookings.json") ?? new List<BookingModel>();
+        }
+        else
+        {
+            BookingsList = await Http.GetFromJsonAsync<List<BookingModel>>("bookings") ?? new List<BookingModel>();
+        }
+        UnpaidBookings = BookingsList.Where(b => !b.IsPaid).ToList();
+        if (grid != null)
+        {
+            await grid.ReloadServerData();
+        }
+        _loading = false;
+    }
+
+    private async Task<GridData<PaymentModel>> LoadPayments(GridState<PaymentModel> state, System.Threading.CancellationToken token)
+    {
+        try
+        {
+            if (Config["DataSourceMode"] == "Local")
+            {
+                if (PaymentsList == null || !PaymentsList.Any())
+                {
+                    PaymentsList = await Http.GetFromJsonAsync<List<PaymentModel>>($"{NavManager.BaseUri}data/payments.json") ?? new List<PaymentModel>();
+                    BookingsList = await Http.GetFromJsonAsync<List<BookingModel>>($"{NavManager.BaseUri}data/bookings.json") ?? new List<BookingModel>();
+                    UnpaidBookings = BookingsList.Where(b => !b.IsPaid).ToList();
+                }
+
+                var ordered = PaymentsList.OrderByDescending(p => p.ModifiedOn ?? p.Date).ToList();
+                var items = ordered.Skip(state.Page * state.PageSize).Take(state.PageSize).ToList();
+
+                return new GridData<PaymentModel>
+                {
+                    TotalItems = PaymentsList.Count,
+                    Items = items
+                };
+            }
+            else
+            {
+                var pageNumber = state.Page + 1;
+                var pageSize = state.PageSize;
+
+                var result = await Http.GetFromJsonAsync<PaginatedResult<PaymentModel>>($"payments?pageNumber={pageNumber}&pageSize={pageSize}");
+
+                return new GridData<PaymentModel>
+                {
+                    TotalItems = result?.TotalCount ?? 0,
+                    Items = result?.Items ?? new List<PaymentModel>()
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading payments: {ex.Message}", Severity.Error);
+            return new GridData<PaymentModel> { Items = new List<PaymentModel>(), TotalItems = 0 };
+        }
+    }
+
+    private bool _dialogVisible;
+    private PaymentModel currentPayment = new();
+    private bool isEdit;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private void OpenAddDialog()
+    {
+        currentPayment = new PaymentModel { Date = DateTime.Today, ModifiedOn = DateTime.UtcNow };
+        paymentType = "Individual";
+        selectedBookingId = "";
+        isEdit = false;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(PaymentModel payment)
+    {
+        currentPayment = new PaymentModel
+        {
+            TransactionId = payment.TransactionId,
+            Date = payment.Date,
+            Amount = payment.Amount,
+            Mode = payment.Mode,
+            UTR = payment.UTR,
+            Purpose = payment.Purpose,
+            ModifiedOn = DateTime.UtcNow
+        };
+        paymentType = "Individual";
+        selectedBookingId = "";
+        isEdit = true;
+        _dialogVisible = true;
+    }
+
+    private void OnPaymentTypeChanged(string value)
+    {
+        paymentType = value;
+        if (paymentType == "Individual")
+        {
+            selectedBookingId = "";
+            currentPayment.Purpose = "";
+            currentPayment.Amount = 0;
+        }
+    }
+
+    private void OnBookingSelected(string id)
+    {
+        selectedBookingId = id;
+        var booking = UnpaidBookings.FirstOrDefault(b => b.Id == id);
+        if (booking != null)
+        {
+            currentPayment.Purpose = $"Booking Payment for {booking.CustomerName} - {booking.FacilityName}";
+        }
+    }
+
+    private void Cancel()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task Save()
+    {
+        await form.ValidateAsync();
+        if (form.IsValid)
+        {
+            currentPayment.ModifiedOn = DateTime.UtcNow;
+            if (Config["DataSourceMode"] == "Api")
+            {
+                if (isEdit)
+                {
+                    var response = await Http.PutAsJsonAsync($"payments/{currentPayment.TransactionId}", currentPayment);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var existing = PaymentsList.FirstOrDefault(x => x.TransactionId == currentPayment.TransactionId);
+                        if (existing != null)
+                        {
+                            existing.Date = currentPayment.Date;
+                            existing.Amount = currentPayment.Amount;
+                            existing.Mode = currentPayment.Mode;
+                            existing.UTR = currentPayment.UTR;
+                            existing.Purpose = currentPayment.Purpose;
+                        }
+                    }
+                }
+                else
+                {
+                    var response = await Http.PostAsJsonAsync("payments", currentPayment);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var created = await response.Content.ReadFromJsonAsync<PaymentModel>();
+                        if (created != null)
+                        {
+                            PaymentsList.Add(created);
+                        }
+
+                        if (paymentType == "Booking Payment" && !string.IsNullOrEmpty(selectedBookingId))
+                        {
+                            var booking = UnpaidBookings.FirstOrDefault(b => b.Id == selectedBookingId);
+                            if (booking != null)
+                            {
+                                booking.PaymentMode = currentPayment.Mode;
+                                booking.UTRNumber = currentPayment.UTR;
+                                await Http.PutAsJsonAsync($"bookings/{booking.Id}", booking);
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (isEdit)
+                {
+                    var existing = PaymentsList.FirstOrDefault(x => x.TransactionId == currentPayment.TransactionId);
+                    if (existing != null)
+                    {
+                        existing.Date = currentPayment.Date;
+                        existing.Amount = currentPayment.Amount;
+                        existing.Mode = currentPayment.Mode;
+                        existing.UTR = currentPayment.UTR;
+                        existing.Purpose = currentPayment.Purpose;
+                    }
+                }
+                else
+                {
+                    currentPayment.TransactionId = "TXN-" + (10000 + PaymentsList.Count + 1).ToString();
+                    PaymentsList.Add(currentPayment);
+
+                    if (paymentType == "Booking Payment" && !string.IsNullOrEmpty(selectedBookingId))
+                    {
+                        var booking = UnpaidBookings.FirstOrDefault(b => b.Id == selectedBookingId);
+                        if (booking != null)
+                        {
+                            booking.PaymentMode = currentPayment.Mode;
+                            booking.UTRNumber = currentPayment.UTR;
+                        }
+                    }
+                }
+            }
+            await RefreshData();
+            _dialogVisible = false;
+        }
+    }
+}

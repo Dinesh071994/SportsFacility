@@ -1,0 +1,23 @@
+[
+  {
+    "id": "STF-101",
+    "name": "Deepak S",
+    "role": "Receptionist",
+    "phone": "+91 9988776655",
+    "isActive": true
+  },
+  {
+    "id": "STF-102",
+    "name": "Karan M",
+    "role": "Admin",
+    "phone": "+91 8877665544",
+    "isActive": true
+  },
+  {
+    "id": "STF-103",
+    "name": "Raju",
+    "role": "Ground Staff",
+    "phone": "+91 7766554433",
+    "isActive": true
+  }
+]

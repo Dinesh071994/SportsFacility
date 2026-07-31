@@ -1,0 +1,65 @@
+-- SQL Seed Data for SportsFacilityDB
+-- Execute this script in SQL Server Management Studio (SSMS) against SportsFacilityDB
+
+-- 1. Insert Facilities
+DECLARE @Facility1Id UNIQUEIDENTIFIER = NEWID();
+DECLARE @Facility2Id UNIQUEIDENTIFIER = NEWID();
+
+INSERT INTO Facilities (Id, Name, Category, Capacity, MaxMembersPerCourt, OpenTime, CloseTime, IsActive, IsDeleted, CreatedOn, CreatedBy)
+VALUES 
+(@Facility1Id, 'Downtown Fitness', 'Gym', 100, 50, '06:00:00', '22:00:00', 1, 0, GETUTCDATE(), 'System'),
+(@Facility2Id, 'Smashers Arena', 'Badminton', 40, 4, '05:00:00', '23:00:00', 1, 0, GETUTCDATE(), 'System');
+
+-- 2. Insert Courts
+DECLARE @Court1Id UNIQUEIDENTIFIER = NEWID();
+DECLARE @Court2Id UNIQUEIDENTIFIER = NEWID();
+DECLARE @Court3Id UNIQUEIDENTIFIER = NEWID();
+
+INSERT INTO Courts (Id, FacilityId, Name, IsActive, IsDeleted, CreatedOn, CreatedBy)
+VALUES
+(@Court1Id, @Facility1Id, 'Main Weight Room', 1, 0, GETUTCDATE(), 'System'),
+(@Court2Id, @Facility2Id, 'Badminton Court 1', 1, 0, GETUTCDATE(), 'System'),
+(@Court3Id, @Facility2Id, 'Badminton Court 2', 1, 0, GETUTCDATE(), 'System');
+
+-- 3. Insert Users (Admin, Staff, and Members)
+DECLARE @UserAdminId UNIQUEIDENTIFIER = NEWID();
+DECLARE @UserStaffId UNIQUEIDENTIFIER = NEWID();
+DECLARE @UserMemberId UNIQUEIDENTIFIER = NEWID();
+
+INSERT INTO Users (Id, FullName, Email, MobileNumber, Role, PasswordHash, IsDeleted, CreatedOn, CreatedBy)
+VALUES
+(@UserAdminId, 'Super Admin', 'admin@sports.com', '9999999999', 'Admin', 'hashed_pass_placeholder', 0, GETUTCDATE(), 'System'),
+(@UserStaffId, 'John Staff', 'staff@sports.com', '8888888888', 'Staff', 'hashed_pass_placeholder', 0, GETUTCDATE(), 'System'),
+(@UserMemberId, 'Alice Member', 'alice@gmail.com', '7777777777', 'Member', 'hashed_pass_placeholder', 0, GETUTCDATE(), 'System');
+
+-- 4. Insert Subscription Plans
+DECLARE @Plan1Id UNIQUEIDENTIFIER = NEWID();
+DECLARE @Plan2Id UNIQUEIDENTIFIER = NEWID();
+
+INSERT INTO SubscriptionPlans (Id, ActivityId, Name, Type, BillingCycle, Price, IsActive, IsDeleted, CreatedOn, CreatedBy)
+VALUES
+(@Plan1Id, @Facility1Id, 'Pro Gym Monthly', 'Individual', 'Monthly', 1500.00, 1, 0, GETUTCDATE(), 'System'),
+(@Plan2Id, @Facility2Id, 'Badminton Quarterly', 'Couple', 'Quarterly', 4500.00, 1, 0, GETUTCDATE(), 'System');
+
+-- 5. Insert User Memberships
+DECLARE @MembershipId UNIQUEIDENTIFIER = NEWID();
+
+INSERT INTO UserMemberships (Id, UserId, SubscriptionPlanId, Status, StartDate, ExpiryDate, QREntryCode, IsDeleted, CreatedOn, CreatedBy)
+VALUES
+(@MembershipId, @UserMemberId, @Plan1Id, 'Active', GETUTCDATE(), DATEADD(month, 1, GETUTCDATE()), 'ALICEQR123', 0, GETUTCDATE(), 'System');
+
+-- 6. Insert Bookings
+DECLARE @BookingId UNIQUEIDENTIFIER = NEWID();
+
+INSERT INTO Bookings (Id, UserId, CourtId, Date, StartTime, EndTime, Status, PaymentStatus, IsDeleted, CreatedOn, CreatedBy)
+VALUES
+(@BookingId, @UserMemberId, @Court2Id, CAST(GETUTCDATE() AS DATE), '18:00:00', '19:00:00', 'Confirmed', 'Paid', 0, GETUTCDATE(), 'System');
+
+-- 7. Insert Payments
+DECLARE @PaymentId UNIQUEIDENTIFIER = NEWID();
+
+INSERT INTO Payments (Id, UserId, ReferenceId, Amount, Mode, Purpose, PaymentDate, IsDeleted, CreatedOn, CreatedBy)
+VALUES
+(@PaymentId, @UserMemberId, @BookingId, 200.00, 'PhonePe', 'Booking', GETUTCDATE(), 0, GETUTCDATE(), 'System');
+
+PRINT 'Seed data inserted successfully.'

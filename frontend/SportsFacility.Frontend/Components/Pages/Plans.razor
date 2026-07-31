@@ -1,0 +1,207 @@
+@page "/plans"
+@using MudBlazor
+@using SportsFacility.Frontend.Models
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject NavigationManager NavManager
+@inject IConfiguration Config
+
+<PageTitle>Membership Plans</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Membership Plans</MudText>
+
+<MudPaper Class="pa-4 rounded-xl mb-6" Elevation="4">
+    <div class="d-flex justify-space-between align-center mb-4">
+        <MudText Typo="Typo.h5" Class="font-weight-bold">Available Plans</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Class="rounded-lg" OnClick="OpenAddDialog">Add New Plan</MudButton>
+    </div>
+    
+    <MudDataGrid Items="@PlansList" Dense="true" Filterable="true" SortMode="SortMode.Multiple">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Plan Name" />
+            <TemplateColumn Title="Facility">
+                <CellTemplate>
+                    @(ActivitiesList.FirstOrDefault(a => a.Id == context.Item.ActivityId)?.Name ?? context.Item.ActivityId)
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.Type" Title="Membership Type" />
+            <PropertyColumn Property="x => x.BillingCycle" Title="Billing Cycle" />
+            <PropertyColumn Property="x => x.Price" Title="Price" Format="C2" />
+            <TemplateColumn Title="Status">
+                <CellTemplate>
+                    <MudChip T="string" Color="@(context.Item.IsActive ? Color.Success : Color.Error)" Size="Size.Small">
+                        @(context.Item.IsActive ? "Active" : "Inactive")
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions">
+                <CellTemplate>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => OpenEditDialog(context.Item)" Title="Edit" />
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</MudPaper>
+
+<MudDialog @bind-Visible="_dialogVisible" Options="_dialogOptions">
+    <DialogContent>
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="currentPlan.Name" Label="Plan Name" Required="true" Class="mb-3"/>
+            <MudSelect @bind-Value="currentPlan.ActivityId" Label="Facility" Required="true" Class="mb-3">
+                @foreach(var activity in ActivitiesList.Where(a => a.IsActive || a.Id == currentPlan.ActivityId))
+                {
+                    <MudSelectItem Value="@activity.Id">@activity.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect @bind-Value="currentPlan.Type" Label="Membership Type" Required="true" Class="mb-3">
+                <MudSelectItem Value="@("Individual")" />
+                <MudSelectItem Value="@("Couple")" />
+                <MudSelectItem Value="@("Family")" />
+                <MudSelectItem Value="@("Corporate")" />
+            </MudSelect>
+            <MudSelect @bind-Value="currentPlan.BillingCycle" Label="Billing Cycle" Required="true" Class="mb-3">
+                <MudSelectItem Value="@("Monthly")" />
+                <MudSelectItem Value="@("Quarterly")" />
+                <MudSelectItem Value="@("Half Yearly")" />
+                <MudSelectItem Value="@("Yearly")" />
+            </MudSelect>
+            <MudNumericField @bind-Value="currentPlan.Price" Label="Price" Required="true" Min="0" Class="mb-3"/>
+            <MudSwitch @bind-Value="currentPlan.IsActive" Label="Is Active?" Color="Color.Primary" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private List<MembershipModel> PlansList = new();
+    private List<ActivityModel> ActivitiesList = new();
+    private MudForm form;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Config["DataSourceMode"] == "Local")
+        {
+            try {
+                PlansList = await Http.GetFromJsonAsync<List<MembershipModel>>($"{NavManager.BaseUri}data/plans.json") ?? new List<MembershipModel>();
+                ActivitiesList = await Http.GetFromJsonAsync<List<ActivityModel>>($"{NavManager.BaseUri}data/activities.json") ?? new List<ActivityModel>();
+            } catch {
+                PlansList = new List<MembershipModel>();
+                ActivitiesList = new List<ActivityModel>();
+            }
+        }
+        else
+        {
+            PlansList = await Http.GetFromJsonAsync<List<MembershipModel>>("plans") ?? new List<MembershipModel>();
+            ActivitiesList = await Http.GetFromJsonAsync<List<ActivityModel>>("activities") ?? new List<ActivityModel>();
+        }
+    }
+
+    private bool _dialogVisible;
+    private MembershipModel currentPlan = new();
+    private bool isEdit;
+    private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+
+    private void OpenAddDialog()
+    {
+        currentPlan = new MembershipModel { IsActive = true };
+        isEdit = false;
+        _dialogVisible = true;
+    }
+
+    private void OpenEditDialog(MembershipModel model)
+    {
+        currentPlan = new MembershipModel
+        {
+            Id = model.Id,
+            Name = model.Name,
+            ActivityId = model.ActivityId,
+            Type = model.Type,
+            BillingCycle = model.BillingCycle,
+            Price = model.Price,
+            IsCouple = model.IsCouple,
+            IsActive = model.IsActive
+        };
+        isEdit = true;
+        _dialogVisible = true;
+    }
+
+    private void Cancel()
+    {
+        _dialogVisible = false;
+    }
+
+    private async Task Save()
+    {
+        await form.Validate();
+        if (form.IsValid)
+        {
+            if (Config["DataSourceMode"] == "Api")
+            {
+                if (string.IsNullOrEmpty(currentPlan.ActivityId) && ActivitiesList.Any())
+                {
+                    currentPlan.ActivityId = ActivitiesList.First().Id;
+                }
+
+                if (isEdit)
+                {
+                    var response = await Http.PutAsJsonAsync($"plans/{currentPlan.Id}", currentPlan);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var existing = PlansList.FirstOrDefault(x => x.Id == currentPlan.Id);
+                        if (existing != null)
+                        {
+                            existing.Name = currentPlan.Name;
+                            existing.ActivityId = currentPlan.ActivityId;
+                            existing.Type = currentPlan.Type;
+                            existing.BillingCycle = currentPlan.BillingCycle;
+                            existing.Price = currentPlan.Price;
+                            existing.IsCouple = currentPlan.Type == "Couple";
+                            existing.IsActive = currentPlan.IsActive;
+                        }
+                        Snackbar.Add("Plan updated successfully", Severity.Success);
+                    }
+                }
+                else
+                {
+                    var response = await Http.PostAsJsonAsync("plans", currentPlan);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var created = await response.Content.ReadFromJsonAsync<MembershipModel>();
+                        if (created != null)
+                        {
+                            PlansList.Add(created);
+                        }
+                        Snackbar.Add("Plan created successfully", Severity.Success);
+                    }
+                }
+            }
+            else
+            {
+                if (isEdit)
+                {
+                    var existing = PlansList.FirstOrDefault(x => x.Id == currentPlan.Id);
+                    if (existing != null)
+                    {
+                        existing.Name = currentPlan.Name;
+                        existing.ActivityId = currentPlan.ActivityId;
+                        existing.Type = currentPlan.Type;
+                        existing.BillingCycle = currentPlan.BillingCycle;
+                        existing.Price = currentPlan.Price;
+                        existing.IsCouple = currentPlan.Type == "Couple";
+                        existing.IsActive = currentPlan.IsActive;
+                    }
+                }
+                else
+                {
+                    currentPlan.IsCouple = currentPlan.Type == "Couple";
+                    PlansList.Add(currentPlan);
+                }
+                Snackbar.Add("Plan saved successfully", Severity.Success);
+            }
+            _dialogVisible = false;
+        }
+    }
+}

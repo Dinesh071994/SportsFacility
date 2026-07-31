@@ -1,0 +1,91 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="_currentTheme" @bind-IsDarkMode="_isDarkMode" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudPopoverProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="0" Style="background: rgba(30, 30, 45, 0.9); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudText Typo="Typo.h5" Class="ml-3 font-weight-bold" Color="Color.Primary">SFM<span style="color: white;">PRO</span></MudText>
+        <MudSpacer />
+        
+        <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)" Color="Color.Inherit" OnClick="ToggleTheme" Class="mr-2" />
+
+        <AuthorizeView>
+            <Authorized>
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Class="mr-3">A</MudAvatar>
+                <MudText Typo="Typo.body2" Class="mr-4">Admin User</MudText>
+                <MudButton Color="Color.Error" Variant="Variant.Text" Href="/login">Logout</MudButton>
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" Class="rounded-lg" Href="/login">Login</MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudAppBar>
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always" Style="background-color: var(--mud-palette-drawer-background); border-right: 1px solid rgba(255,255,255,0.05);">
+        <NavMenu />
+    </MudDrawer>
+    <MudMainContent Style="background-color: var(--mud-palette-background); min-height: 100vh;">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-4 pt-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    bool _drawerOpen = true;
+    bool _isDarkMode = true;
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    void ToggleTheme()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+
+    private MudTheme _currentTheme = new MudTheme()
+    {
+        PaletteDark = new PaletteDark()
+        {
+            Primary = "#00d2ff",
+            Secondary = "#3a7bd5",
+            AppbarBackground = "#1e1e2d",
+            Background = "#151521",
+            Surface = "#1e1e2d",
+            DrawerBackground = "#1e1e2d",
+            DrawerText = "#92929f",
+            DrawerIcon = "#92929f",
+            TextPrimary = "#ffffff",
+            TextSecondary = "#92929f"
+        },
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#0078d4",
+            Secondary = "#2b88d8",
+            AppbarBackground = "#f8f9fa",
+            Background = "#f4f6f8",
+            Surface = "#ffffff",
+            DrawerBackground = "#ffffff",
+            DrawerText = "#323130",
+            DrawerIcon = "#323130",
+            TextPrimary = "#323130",
+            TextSecondary = "#605e5c"
+        },
+        LayoutProperties = new LayoutProperties()
+        {
+            DefaultBorderRadius = "12px",
+            DrawerWidthLeft = "260px"
+        }
+    };
+}

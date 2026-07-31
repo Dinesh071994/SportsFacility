@@ -1,0 +1,23 @@
+[
+  {
+    "id": "ACT-001",
+    "name": "Badminton",
+    "numberOfCourts": 3,
+    "maxMembersPerCourt": 4,
+    "isActive": true
+  },
+  {
+    "id": "ACT-002",
+    "name": "Football",
+    "numberOfCourts": 2,
+    "maxMembersPerCourt": 14,
+    "isActive": true
+  },
+  {
+    "id": "ACT-003",
+    "name": "Gym",
+    "numberOfCourts": 1,
+    "maxMembersPerCourt": 50,
+    "isActive": true
+  }
+]

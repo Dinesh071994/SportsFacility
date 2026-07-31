@@ -1,0 +1,28 @@
+{
+  "MembershipRevenueThisMonth": 45000.0,
+  "ActiveMemberships": 142,
+  "ExpiringMembershipsSoon": 8,
+  "TodaysBookings": 38,
+  "WalkinRevenueData": [4000, 3000, 5000, 4500, 7000, 8000, 6000],
+  "RevenueLabels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+  "UpcomingBookings": [
+    {
+      "Title": "Turf A - Football",
+      "Status": "Confirmed",
+      "Time": "18:00 - 19:00",
+      "Type": "Walk-in"
+    },
+    {
+      "Title": "Court 1 - Badminton",
+      "Status": "Pending Pay",
+      "Time": "19:00 - 20:00",
+      "Type": "Walk-in"
+    },
+    {
+      "Title": "Turf B - Cricket",
+      "Status": "Confirmed",
+      "Time": "20:00 - 22:00",
+      "Type": "Member"
+    }
+  ]
+}

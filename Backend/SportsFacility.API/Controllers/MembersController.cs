@@ -1,55 +1,78 @@
-﻿using AutoMapper;
-using Microsoft.AspNetCore.Authorization;
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using SportsFacility.Domain.Interface;
-using SportsFacility.Domain.Models;
 using SportsFacility.DTO;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SportsFacility.API.Controllers
 {
-
-
-    // Controllers/MembersController.cs
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin,Manager,Staff")]
     public class MembersController : ControllerBase
     {
-        private readonly IBaseService<Member> _memberService;
+        private readonly IMembershipService _membershipService;
         private readonly IMapper _mapper;
 
-        public MembersController(IBaseService<Member> memberService, IMapper mapper)
+        public MembersController(IMembershipService membershipService, IMapper mapper)
         {
-            _memberService = memberService;
+            _membershipService = membershipService;
             _mapper = mapper;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllMembers(
-            [FromQuery] string name = null,
-            [FromQuery] string email = null,
-            [FromQuery] string membershipType = null)
+        public async Task<ActionResult> GetMembers([FromQuery] int? pageNumber = null, [FromQuery] int? pageSize = null)
         {
-            var members = await _memberService.GetAllAsync();
-            var memberDtos = _mapper.Map<List<MemberDto>>(members);
+            if (pageNumber.HasValue && pageSize.HasValue)
+            {
+                var (items, totalCount) = await _membershipService.GetPagedMembershipsAsync(pageNumber.Value, pageSize.Value);
+                var mappedItems = _mapper.Map<IEnumerable<MemberListDto>>(items);
+                return Ok(new PaginatedResultDto<MemberListDto>
+                {
+                    Items = mappedItems,
+                    TotalCount = totalCount
+                });
+            }
 
-            return Ok(new { data = memberDtos, count = memberDtos.Count });
+            var memberships = await _membershipService.GetMembershipsAsync();
+            return Ok(_mapper.Map<IEnumerable<MemberListDto>>(memberships));
         }
 
-        //[HttpPost]
-        //public async Task<IActionResult> RegisterMember([FromBody] RegisterMemberDto memberDto)
-        //{
-        //    if (!ModelState.IsValid)
-        //        return BadRequest(ModelState);
+        [HttpPost]
+        public async Task<ActionResult<MemberListDto>> CreateMember(MemberCreateDto dto)
+        {
+            var membership = await _membershipService.CreateMembershipAsync(dto);
+            if (membership == null)
+            {
+                return NotFound("Plan not found");
+            }
 
-        //    var member = _mapper.Map<Member>(memberDto);
-        //    var result = await _memberService.RegisterAsync(member);
+            return CreatedAtAction(nameof(GetMembers), new { id = membership.Id }, _mapper.Map<MemberListDto>(membership));
+        }
 
-        //    return CreatedAtAction(
-        //        nameof(GetMemberById),
-        //        new { id = result.Id },
-        //        result
-        //    );
-        //}
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateMember(Guid id, MemberCreateDto dto)
+        {
+            var result = await _membershipService.UpdateMembershipAsync(id, dto);
+            if (!result)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteMember(Guid id)
+        {
+            var result = await _membershipService.DeleteMembershipAsync(id);
+            if (!result)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
     }
 }

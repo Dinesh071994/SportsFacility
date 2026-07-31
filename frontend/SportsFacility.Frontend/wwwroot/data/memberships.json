@@ -1,0 +1,29 @@
+[
+  {
+    "id": "MEM-001",
+    "activityId": "ACT-001",
+    "name": "Badminton Monthly",
+    "type": "Monthly",
+    "price": 1500,
+    "isCouple": false,
+    "isActive": true
+  },
+  {
+    "id": "MEM-002",
+    "activityId": "ACT-003",
+    "name": "Gym Annual VIP",
+    "type": "Annually",
+    "price": 12000,
+    "isCouple": false,
+    "isActive": true
+  },
+  {
+    "id": "MEM-003",
+    "activityId": "ACT-003",
+    "name": "Gym Couple Monthly",
+    "type": "Monthly",
+    "price": 2500,
+    "isCouple": true,
+    "isActive": true
+  }
+]

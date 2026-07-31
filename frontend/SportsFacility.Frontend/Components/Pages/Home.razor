@@ -1,0 +1,154 @@
+@page "/"
+@using MudBlazor
+@using SportsFacility.Frontend.Models
+@inject HttpClient Http
+@inject NavigationManager NavManager
+@inject IConfiguration Config
+@inject SportsFacility.Frontend.Services.IDashboardService DashboardService
+
+<PageTitle>Dashboard</PageTitle>
+
+<MudText Typo="Typo.h3" GutterBottom="true">Dashboard</MudText>
+
+@if (_dashboard == null)
+{
+    <div class="d-flex justify-center mt-10">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    </div>
+}
+else
+{
+    <MudGrid>
+        <!-- 1. Membership Revenue -->
+       @*  <MudItem xs="12" sm="6" md="4">
+            <MudPaper Elevation="4" Class="pa-4 rounded-xl" Style="height: 120px; border-left: 5px solid var(--mud-palette-primary);">
+                <div class="d-flex justify-space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Style="color: gray;">Membership Revenue</MudText>
+                        <MudText Typo="Typo.h4" Class="mt-2 font-weight-bold">₹@_dashboard.MembershipRevenueThisMonth.ToString("N0")</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.CurrencyRupee" Color="Color.Primary" Size="Size.Large" />
+                </div>
+            </MudPaper>
+        </MudItem> *@
+        <!-- 2. Total Online (PhonePe) -->
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Elevation="4" Class="pa-4 rounded-xl" Style="height: 120px; border-left: 5px solid var(--mud-palette-success);">
+                <div class="d-flex justify-space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Style="color: gray;">Total Online</MudText>
+                        <MudText Typo="Typo.h4" Class="mt-2 font-weight-bold" Color="Color.Success">₹@totalOnline.ToString("N0")</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.Payment" Color="Color.Success" Size="Size.Large" />
+                </div>
+            </MudPaper>
+        </MudItem>
+        <!-- 3. Total Cash Collected -->
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Elevation="4" Class="pa-4 rounded-xl" Style="height: 120px; border-left: 5px solid var(--mud-palette-info);">
+                <div class="d-flex justify-space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Style="color: gray;">Total Cash Collected</MudText>
+                        <MudText Typo="Typo.h4" Class="mt-2 font-weight-bold" Color="Color.Info">₹@totalCash.ToString("N0")</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.Payments" Color="Color.Info" Size="Size.Large" />
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- 4. Active Memberships -->
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Elevation="4" Class="pa-4 rounded-xl" Style="height: 120px; border-left: 5px solid var(--mud-palette-success);">
+                <div class="d-flex justify-space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Style="color: gray;">Active Memberships</MudText>
+                        <MudText Typo="Typo.h4" Class="mt-2 font-weight-bold">@_dashboard.ActiveMemberships</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.CardMembership" Color="Color.Success" Size="Size.Large" />
+                </div>
+            </MudPaper>
+        </MudItem>
+        <!-- 5. Expiring Memberships -->
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Elevation="4" Class="pa-4 rounded-xl" Style="height: 120px; border-left: 5px solid var(--mud-palette-error);">
+                <div class="d-flex justify-space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Style="color: gray;">Expiring Soon (7 Days)</MudText>
+                        <MudText Typo="Typo.h4" Class="mt-2 font-weight-bold">@_dashboard.ExpiringMembershipsSoon</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.NotificationImportant" Color="Color.Error" Size="Size.Large" />
+                </div>
+            </MudPaper>
+        </MudItem>
+        <!-- 6. Today's Bookings -->
+        <MudItem xs="12" sm="6" md="4">
+            <MudPaper Elevation="4" Class="pa-4 rounded-xl" Style="height: 120px; border-left: 5px solid var(--mud-palette-info);">
+                <div class="d-flex justify-space-between">
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Style="color: gray;">Today's Bookings</MudText>
+                        <MudText Typo="Typo.h4" Class="mt-2 font-weight-bold">@_dashboard.TodaysBookings</MudText>
+                    </div>
+                    <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Info" Size="Size.Large" />
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudGrid Class="mt-4">
+        <MudItem xs="12">
+            <MudCard Elevation="4" Class="rounded-xl">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Class="font-weight-bold">Upcoming Bookings</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudList T="string">
+                        @foreach (var booking in _dashboard.UpcomingBookings)
+                        {
+                            <MudListItem>
+                                <div class="d-flex justify-space-between">
+                                    <MudText Typo="Typo.body1">@booking.Title</MudText>
+                                    <MudChip T="string" Color="@(booking.Status == "Confirmed" ? Color.Success : Color.Warning)" Size="Size.Small">@booking.Status</MudChip>
+                                </div>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@booking.Time (@booking.Type)</MudText>
+                            </MudListItem>
+                            <MudDivider />
+                        }
+                    </MudList>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private DashboardDto _dashboard;
+    private decimal totalOnline;
+    private decimal totalCash;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _dashboard = await DashboardService.GetDashboardDataAsync();
+
+        List<PaymentModel> payments = new();
+        try
+        {
+            if (Config["DataSourceMode"] == "Local")
+            {
+                payments = await Http.GetFromJsonAsync<List<PaymentModel>>($"{NavManager.BaseUri}data/payments.json") ?? new();
+            }
+            else
+            {
+                payments = await Http.GetFromJsonAsync<List<PaymentModel>>("payments") ?? new();
+            }
+            totalOnline = payments.Where(p => p.Mode == "Online").Sum(p => p.Amount);
+            totalCash = payments.Where(p => p.Mode == "Cash").Sum(p => p.Amount);
+        }
+        catch (Exception)
+        {
+            totalOnline = 0;
+            totalCash = 0;
+        }
+    }
+}

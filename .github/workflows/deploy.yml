@@ -1,0 +1,30 @@
+name: Deploy to Hostinger VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore ./Backend/SportsFacility.API/SportsFacility.API.csproj
+
+    - name: Build and Publish Backend
+      run: dotnet publish ./Backend/SportsFacility.API/SportsFacility.API.csproj -c Release -o ./publish/backend
+
+    - name: Build and Publish Frontend
+      run: dotnet publish ./frontend/SportsFacility.Frontend/SportsFacility.Frontend.csproj -c Release -o ./publish/frontend
+
+   

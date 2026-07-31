@@ -1,0 +1,22 @@
+[
+  {
+    "id": "BK-1001",
+    "customerName": "Rahul M",
+    "facilityName": "Badminton",
+    "date": "2026-07-30T00:00:00",
+    "timeSlot": "18:00",
+    "paymentMode": "Online",
+    "utrNumber": "123456789012",
+    "modifiedDate": "2026-07-30T10:00:00"
+  },
+  {
+    "id": "BK-1002",
+    "customerName": "Suresh K",
+    "facilityName": "Football",
+    "date": "2026-07-31T00:00:00",
+    "timeSlot": "20:00",
+    "paymentMode": "Cash",
+    "utrNumber": "",
+    "modifiedDate": "2026-07-30T09:30:00"
+  }
+]

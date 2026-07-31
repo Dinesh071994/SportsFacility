@@ -1,85 +1,61 @@
-﻿using AutoMapper;
-using Microsoft.AspNetCore.Authorization;
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using SportsFacility.Domain.Interface;
-using SportsFacility.Domain.Models;
 using SportsFacility.DTO;
+using SportsFacility.Entity.Entities;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SportsFacility.API.Controllers
 {
-    // Controllers/FacilitiesController.cs
     [ApiController]
-    [Route("api/[controller]")]
-    [Authorize(Roles = "Admin,Manager,Staff")]
+    [Route("api/activities")]
     public class FacilitiesController : ControllerBase
     {
-        private readonly IBaseService<Facility> _facilityService;
+        private readonly IFacilityService _facilityService;
         private readonly IMapper _mapper;
 
-        public FacilitiesController(IBaseService<Facility> facilityService, IMapper mapper)
+        public FacilitiesController(IFacilityService facilityService, IMapper mapper)
         {
             _facilityService = facilityService;
             _mapper = mapper;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllFacilities()
+        public async Task<ActionResult<IEnumerable<ActivityDto>>> GetFacilities()
         {
-            var facilities = await _facilityService.GetAllAsync();
-            var facilityDtos = _mapper.Map<List<FacilityDto>>(facilities);
-
-            return Ok(new { data = facilityDtos, count = facilityDtos.Count });
-        }
-
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetFacilityById(int id)
-        {
-            var facility = await _facilityService.GetByIdAsync(id);
-            if (facility == null)
-                return NotFound(new { error = "Facility not found" });
-
-            var facilityDto = _mapper.Map<FacilityDto>(facility);
-            return Ok(facilityDto);
+            var facilities = await _facilityService.GetFacilitiesAsync();
+            return Ok(_mapper.Map<IEnumerable<ActivityDto>>(facilities));
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateFacility([FromBody] FacilityDto facilityDto)
+        public async Task<ActionResult<ActivityDto>> CreateFacility(ActivityDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            var facility = _mapper.Map<Facility>(facilityDto);
-            var result = await _facilityService.CreateAsync(facility);
-
-            return CreatedAtAction(
-                nameof(GetFacilityById),
-                new { id = result.Id },
-                result
-            );
+            var facility = _mapper.Map<Facility>(dto);
+            var created = await _facilityService.CreateFacilityAsync(facility, dto.NumberOfCourts);
+            return CreatedAtAction(nameof(GetFacilities), new { id = created.Id }, _mapper.Map<ActivityDto>(created));
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateFacility(int id, [FromBody] FacilityDto facilityDto)
+        public async Task<IActionResult> UpdateFacility(Guid id, ActivityDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-            var facility = _mapper.Map<Facility>(facilityDto);
+            if (id.ToString() != dto.Id) return BadRequest();
 
-            var result = await _facilityService.UpdateAsync(id, facility);
-            if (result == null)
-                return NotFound(new { error = "Facility not found" });
+            var facility = _mapper.Map<Facility>(dto);
+            var result = await _facilityService.UpdateFacilityAsync(id, facility);
+            if (!result) return NotFound();
 
-            return Ok(new { message = "Facility updated successfully" });
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteFacility(int id)
+        public async Task<IActionResult> DeleteFacility(Guid id)
         {
-            var result = await _facilityService.DeleteAsync(id);
-            if (result == false)
-                return NotFound(new { error = "Facility not found" });
+            var result = await _facilityService.DeleteFacilityAsync(id);
+            if (!result) return NotFound();
 
-            return Ok(new { message = "Facility deleted successfully" });
+            return NoContent();
         }
     }
 }
