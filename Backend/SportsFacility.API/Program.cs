@@ -55,6 +55,21 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 
+// Distributed Caching configuration (Redis or fallback Memory Cache)
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "SportsFacility_";
+    });
+}
+else
+{
+    builder.Services.AddDistributedMemoryCache();
+}
+
 // Register services (use concrete interfaces from Domain)
 builder.Services.AddScoped<SportsFacility.Domain.Interface.IAuthService, SportsFacility.Domain.Services.AuthService>();
 builder.Services.AddScoped<SportsFacility.Domain.Interface.IMembershipService, SportsFacility.Domain.Services.MembershipService>();

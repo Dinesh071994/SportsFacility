@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using SportsFacility.Domain.Interface;
+using SportsFacility.Domain.Helpers;
 using SportsFacility.Entity.Entities;
 using SportsFacility.Infrastructure.Data;
 using System;
@@ -11,21 +13,41 @@ namespace SportsFacility.Domain.Services
     public class PlanService : IPlanService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IDistributedCache _cache;
+        private const string CacheKey = "subscription_plans";
 
-        public PlanService(ApplicationDbContext context)
+        public PlanService(ApplicationDbContext context, IDistributedCache cache)
         {
             _context = context;
+            _cache = cache;
         }
 
         public async Task<IEnumerable<SubscriptionPlan>> GetPlansAsync()
         {
-            return await _context.SubscriptionPlans.ToListAsync();
+            // Try to get from cache
+            var cachedPlans = await _cache.GetRecordAsync<List<SubscriptionPlan>>(CacheKey);
+            if (cachedPlans != null)
+            {
+                return cachedPlans;
+            }
+
+            // Fetch from DB
+            var plans = await _context.SubscriptionPlans.ToListAsync();
+
+            // Store in cache for 10 minutes
+            await _cache.SetRecordAsync(CacheKey, plans, TimeSpan.FromMinutes(10));
+
+            return plans;
         }
 
         public async Task<SubscriptionPlan> CreatePlanAsync(SubscriptionPlan plan)
         {
             _context.SubscriptionPlans.Add(plan);
             await _context.SaveChangesAsync();
+
+            // Invalidate cache
+            await _cache.RemoveAsync(CacheKey);
+
             return plan;
         }
 
@@ -43,6 +65,10 @@ namespace SportsFacility.Domain.Services
             existing.IsActive = plan.IsActive;
 
             await _context.SaveChangesAsync();
+
+            // Invalidate cache
+            await _cache.RemoveAsync(CacheKey);
+
             return true;
         }
 
@@ -53,6 +79,10 @@ namespace SportsFacility.Domain.Services
 
             plan.IsActive = false; // Soft delete
             await _context.SaveChangesAsync();
+
+            // Invalidate cache
+            await _cache.RemoveAsync(CacheKey);
+
             return true;
         }
     }
