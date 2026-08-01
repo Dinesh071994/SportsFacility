@@ -66,3 +66,4 @@ nunit-*.xml
 /frontend/.vs/SportsFacility.Frontend
 /frontend/.vs/ProjectEvaluation
 /frontend/SportsFacility.Frontend/Properties/PublishProfiles
+/.vs
