@@ -38,18 +38,29 @@
     public string Password { get; set; } = "admin";
     private string ErrorMessage { get; set; } = "";
     private bool _loading;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Clear any stale tokens immediately to prevent auto-redirect flashes
+            await AuthProvider.MarkUserAsLoggedOut();
+        }
+    }
+
     private async Task PerformLogin()
     {
         try 
         {
-             _loading = true;
+            _loading = true;
+            ErrorMessage = "";
             var response = await Http.PostAsJsonAsync("Auth/login", new { Email = Email, Password = Password });
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<LoginResult>();
                 if (result != null)
                 {
-                    await AuthProvider.MarkUserAsAuthenticated(result.Token);
+                    await AuthProvider.MarkUserAsAuthenticated(result.Token, result.RefreshToken);
                     NavManager.NavigateTo("/");
                 }
             }
@@ -61,7 +72,7 @@
         catch
         {
             // Fallback for local UI without backend running
-            await AuthProvider.MarkUserAsAuthenticated("mock-jwt-token");
+            await AuthProvider.MarkUserAsAuthenticated("mock-jwt-token", "mock-refresh-token");
             NavManager.NavigateTo("/");
         }
         finally
@@ -73,6 +84,7 @@
     private class LoginResult
     {
         public string Token { get; set; } = "";
+        public string RefreshToken { get; set; } = "";
         public string Role { get; set; } = "";
     }
 }

@@ -9,9 +9,7 @@ using System.Threading.Tasks;
 
 namespace SportsFacility.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class PlansController : ControllerBase
+    public class PlansController : BaseApiController
     {
         private readonly IPlanService _planService;
         private readonly IMapper _mapper;

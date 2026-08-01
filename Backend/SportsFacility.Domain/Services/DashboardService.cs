@@ -22,41 +22,55 @@ namespace SportsFacility.Domain.Services
             var today = DateTime.UtcNow.Date;
             var startOfMonth = new DateTime(today.Year, today.Month, 1);
             var inSevenDays = today.AddDays(7);
+            var sevenDaysAgo = today.AddDays(-6);
+            var tomorrow = today.AddDays(1);
 
             // 1. Membership Revenue This Month
             var membershipRevenue = await _context.Payments
+                .AsNoTracking()
                 .Where(p => p.Purpose == "Membership" && p.PaymentDate >= startOfMonth)
                 .SumAsync(p => p.Amount);
 
             // 2. Active Memberships
             var activeMemberships = await _context.UserMemberships
+                .AsNoTracking()
                 .CountAsync(um => um.Status == "Active" && um.ExpiryDate > DateTime.UtcNow);
 
             // 3. Expiring Memberships Soon (Next 7 Days)
             var expiringMemberships = await _context.UserMemberships
+                .AsNoTracking()
                 .CountAsync(um => um.Status == "Active" && um.ExpiryDate > DateTime.UtcNow && um.ExpiryDate <= inSevenDays);
 
-            // 4. Today's Bookings
+            // 4. Today's Bookings (using range query to utilize indexes)
             var todaysBookings = await _context.Bookings
-                .CountAsync(b => b.Date.Date == today);
+                .AsNoTracking()
+                .CountAsync(b => b.Date >= today && b.Date < tomorrow);
 
-            // 5. Walk-in Revenue Analytics (Last 7 Days)
+            // 5. Batch Walk-in Revenue Analytics (Last 7 Days) in a single DB query
             var walkinRevenueData = new List<double>();
             var revenueLabels = new List<string>();
+
+            var lastSevenDaysPayments = await _context.Payments
+                .AsNoTracking()
+                .Where(p => p.Purpose == "Booking" && p.PaymentDate >= sevenDaysAgo && p.PaymentDate < tomorrow)
+                .Select(p => new { p.PaymentDate, p.Amount })
+                .ToListAsync();
+
+            var revenueByDate = lastSevenDaysPayments
+                .GroupBy(p => p.PaymentDate.Date)
+                .ToDictionary(g => g.Key, g => g.Sum(p => (double)p.Amount));
 
             for (int i = 6; i >= 0; i--)
             {
                 var targetDate = today.AddDays(-i);
-                var revenueForDay = await _context.Payments
-                    .Where(p => p.Purpose == "Booking" && p.PaymentDate.Date == targetDate)
-                    .SumAsync(p => p.Amount);
-
-                walkinRevenueData.Add((double)revenueForDay);
+                revenueByDate.TryGetValue(targetDate, out double revenueForDay);
+                walkinRevenueData.Add(revenueForDay);
                 revenueLabels.Add(targetDate.ToString("ddd"));
             }
 
             // 6. Upcoming Bookings
             var upcomingBookings = await _context.Bookings
+                .AsNoTracking()
                 .Include(b => b.Facility)
                 .Where(b => b.Date >= today)
                 .OrderBy(b => b.Date).ThenBy(b => b.StartTime)

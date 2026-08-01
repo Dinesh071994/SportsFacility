@@ -12,10 +12,35 @@ namespace SportsFacility.Frontend.Services
     {
         private readonly IJSRuntime _jsRuntime;
         private const string TokenKey = "authToken";
+        private const string RefreshTokenKey = "refreshToken";
 
         public ApiAuthenticationStateProvider(IJSRuntime jsRuntime)
         {
             _jsRuntime = jsRuntime;
+        }
+
+        public async Task<string?> GetTokenAsync()
+        {
+            try
+            {
+                return await _jsRuntime.InvokeAsync<string>("localStorage.getItem", TokenKey);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public async Task<string?> GetRefreshTokenAsync()
+        {
+            try
+            {
+                return await _jsRuntime.InvokeAsync<string>("localStorage.getItem", RefreshTokenKey);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -42,9 +67,10 @@ namespace SportsFacility.Frontend.Services
             }
         }
 
-        public async Task MarkUserAsAuthenticated(string token)
+        public async Task MarkUserAsAuthenticated(string token, string refreshToken)
         {
             await _jsRuntime.InvokeVoidAsync("localStorage.setItem", TokenKey, token);
+            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", RefreshTokenKey, refreshToken);
             var authenticatedUser = new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwt"));
             NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(authenticatedUser)));
         }
@@ -52,6 +78,7 @@ namespace SportsFacility.Frontend.Services
         public async Task MarkUserAsLoggedOut()
         {
             await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", TokenKey);
+            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", RefreshTokenKey);
             var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
             NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(anonymousUser)));
         }

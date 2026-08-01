@@ -15,6 +15,8 @@ namespace SportsFacility.Entity.Entities
         public string Role { get; set; } = "Customer"; // SuperAdmin, BranchAdmin, Receptionist, Trainer, Customer
         public string PasswordHash { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiry { get; set; }
 
         // Navigation Properties
         public ICollection<UserMembership> PrimaryMemberships { get; set; } = new List<UserMembership>();

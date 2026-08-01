@@ -48,7 +48,7 @@
                             @if (authContext.User.IsInRole("SuperAdmin") || (authContext.User.IsInRole("Admin") && context.Item.Role != "SuperAdmin"))
                             {
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary" OnClick="() => OpenEditDialog(context.Item)" />
-                                <MudIconButton Icon="@Icons.Material.Filled.VpnKey" Size="Size.Small" Color="Color.Warning" OnClick="() => OpenResetPassword(context.Item)" Title="Reset Password" />
+                                <MudIconButton Icon="@Icons.Material.Filled.VpnKey" Size="Size.Small" Color="Color.Warning" OnClick="() => OpenResetPassword(context.Item)" title="Reset Password" />
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error" OnClick="() => DeleteUser(context.Item)" />
                             }
                         </Authorized>

@@ -4,9 +4,7 @@ using System.Threading.Tasks;
 
 namespace SportsFacility.API.Controllers
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class AuthController : ControllerBase
+    public class AuthController : BaseApiController
     {
         private readonly IAuthService _authService;
 
@@ -28,6 +26,12 @@ namespace SportsFacility.API.Controllers
             public string NewPassword { get; set; } = string.Empty;
         }
 
+        public class RefreshTokenDto
+        {
+            public string Token { get; set; } = string.Empty;
+            public string RefreshToken { get; set; } = string.Empty;
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto login)
         {
@@ -38,7 +42,18 @@ namespace SportsFacility.API.Controllers
                 return Unauthorized("Invalid credentials");
             }
 
-            return Ok(new { Token = authResult.Token, Role = authResult.Role });
+            return Ok(new { Token = authResult.Token, RefreshToken = authResult.RefreshToken, Role = authResult.Role });
+        }
+
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto dto)
+        {
+            var authResult = await _authService.RefreshTokenAsync(dto.Token, dto.RefreshToken);
+            if (authResult == null)
+            {
+                return BadRequest("Invalid token or refresh token");
+            }
+            return Ok(new { Token = authResult.Token, RefreshToken = authResult.RefreshToken, Role = authResult.Role });
         }
 
         [HttpPost("change-password")]

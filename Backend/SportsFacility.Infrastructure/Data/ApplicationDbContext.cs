@@ -110,6 +110,28 @@ namespace SportsFacility.Infrastructure.Data
             modelBuilder.Entity<UserMembership>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Booking>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<ClassSchedule>().HasQueryFilter(x => !x.IsDeleted);
+
+            // Configure Indexes for Performance
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email);
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.MobileNumber);
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.IsDeleted);
+
+            modelBuilder.Entity<UserMembership>()
+                .HasIndex(um => um.IsDeleted);
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.IsDeleted);
+
+            modelBuilder.Entity<ClassSchedule>()
+                .HasIndex(cs => cs.IsDeleted);
+
+            modelBuilder.Entity<Payment>()
+                .HasIndex(p => p.PaymentDate);
         }
 
         public override int SaveChanges()

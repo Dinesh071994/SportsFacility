@@ -35,8 +35,8 @@ namespace SportsFacility.API
 
             // ClassSchedule <-> ClassScheduleDto
             CreateMap<ClassSchedule, ClassScheduleDto>()
-                .ForMember(dest => dest.TrainerName, opt => opt.MapFrom(src => src.Trainer.FullName))
-                .ForMember(dest => dest.Attendance, opt => opt.MapFrom(src => src.Attendances.Count));
+                .ForMember(dest => dest.TrainerName, opt => opt.MapFrom(src => src.Trainer != null ? src.Trainer.FullName : string.Empty))
+                .ForMember(dest => dest.Attendance, opt => opt.MapFrom(src => src.Attendances != null ? src.Attendances.Count : 0));
 
             // Booking <-> BookingListDto
             CreateMap<Booking, BookingListDto>()

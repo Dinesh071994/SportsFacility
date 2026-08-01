@@ -21,6 +21,7 @@ namespace SportsFacility.Domain.Services
         public async Task<IEnumerable<UserMembership>> GetMembershipsAsync()
         {
             return await _context.UserMemberships
+                .AsNoTracking()
                 .Include(um => um.User)
                 .Include(um => um.SubscriptionPlan)
                 .OrderByDescending(um => um.ModifiedOn ?? um.CreatedOn)
@@ -30,6 +31,7 @@ namespace SportsFacility.Domain.Services
         public async Task<(IEnumerable<UserMembership> Items, int TotalCount)> GetPagedMembershipsAsync(int pageNumber, int pageSize)
         {
             var query = _context.UserMemberships
+                .AsNoTracking()
                 .Include(um => um.User)
                 .Include(um => um.SubscriptionPlan)
                 .OrderByDescending(um => um.ModifiedOn ?? um.CreatedOn);

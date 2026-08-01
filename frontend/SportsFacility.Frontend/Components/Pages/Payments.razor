@@ -47,7 +47,8 @@
         <MudForm @ref="form">
             @if (!isEdit)
             {
-                <MudRadioGroup T="string" Value="paymentType" ValueChanged="OnPaymentTypeChanged" Label="Payment Type" Class="mb-3">
+                <MudText Typo="Typo.subtitle2" Class="mb-1">Payment Type</MudText>
+                <MudRadioGroup T="string" Value="paymentType" ValueChanged="OnPaymentTypeChanged" Class="mb-3">
                     <MudRadio Value="@("Individual")" Color="Color.Primary">Individual</MudRadio>
                     <MudRadio Value="@("Booking Payment")" Color="Color.Primary">Booking Payment</MudRadio>
                 </MudRadioGroup>

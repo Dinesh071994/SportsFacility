@@ -22,6 +22,7 @@ namespace SportsFacility.Domain.Services
         public async Task<IEnumerable<Booking>> GetBookingsAsync(string? type = null)
         {
             var query = _context.Bookings
+                .AsNoTracking()
                 .Include(b => b.User)
                 .Include(b => b.Facility)
                 .OrderByDescending(b => b.ModifiedOn ?? b.CreatedOn);
@@ -41,6 +42,7 @@ namespace SportsFacility.Domain.Services
         public async Task<(IEnumerable<Booking> Items, int TotalCount)> GetPagedBookingsAsync(int pageNumber, int pageSize)
         {
             var query = _context.Bookings
+                .AsNoTracking()
                 .Include(b => b.User)
                 .Include(b => b.Facility)
                 .OrderByDescending(b => b.ModifiedOn ?? b.CreatedOn);

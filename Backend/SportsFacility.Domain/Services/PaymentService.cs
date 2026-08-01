@@ -21,6 +21,7 @@ namespace SportsFacility.Domain.Services
         public async Task<IEnumerable<Payment>> GetPaymentsAsync()
         {
             return await _context.Payments
+                .AsNoTracking()
                 .OrderByDescending(p => p.ModifiedOn ?? p.CreatedOn)
                 .ToListAsync();
         }
@@ -28,6 +29,7 @@ namespace SportsFacility.Domain.Services
         public async Task<(IEnumerable<Payment> Items, int TotalCount)> GetPagedPaymentsAsync(int pageNumber, int pageSize)
         {
             var query = _context.Payments
+                .AsNoTracking()
                 .OrderByDescending(p => p.ModifiedOn ?? p.CreatedOn);
 
             var totalCount = await query.CountAsync();

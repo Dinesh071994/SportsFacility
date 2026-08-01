@@ -22,6 +22,7 @@ namespace SportsFacility.Domain.Services
         public async Task<IEnumerable<ClassSchedule>> GetClassesAsync()
         {
             return await _context.ClassSchedules
+                .AsNoTracking()
                 .Include(c => c.Trainer)
                 .Include(c => c.Facility)
                 .Include(c => c.Attendances)
@@ -97,7 +98,10 @@ namespace SportsFacility.Domain.Services
             classSchedule.Date = dto.Date.Date;
             classSchedule.StartTime = dto.StartTime ?? classSchedule.StartTime;
             classSchedule.EndTime = dto.EndTime ?? classSchedule.EndTime;
-            classSchedule.Trainer.FullName = dto.TrainerName;
+            if (classSchedule.Trainer != null)
+            {
+                classSchedule.Trainer.FullName = dto.TrainerName;
+            }
 
             await _context.SaveChangesAsync();
             return true;
