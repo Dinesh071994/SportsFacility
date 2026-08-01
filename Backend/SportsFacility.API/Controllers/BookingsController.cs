@@ -22,8 +22,14 @@ namespace SportsFacility.API.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult> GetBookings([FromQuery] int? pageNumber = null, [FromQuery] int? pageSize = null)
+        public async Task<ActionResult> GetBookings([FromQuery] string? type = null, [FromQuery] int? pageNumber = null, [FromQuery] int? pageSize = null)
         {
+            if(type != null)
+            {
+                var bookingsByType = await _bookingService.GetBookingsAsync(type);
+                return Ok(_mapper.Map<IEnumerable<BookingListDto>>(bookingsByType));
+            }
+
             if (pageNumber.HasValue && pageSize.HasValue)
             {
                 var (items, totalCount) = await _bookingService.GetPagedBookingsAsync(pageNumber.Value, pageSize.Value);
@@ -36,13 +42,6 @@ namespace SportsFacility.API.Controllers
             }
 
             var bookings = await _bookingService.GetBookingsAsync();
-            return Ok(_mapper.Map<IEnumerable<BookingListDto>>(bookings));
-        }
-
-        [HttpGet]
-        public async Task<ActionResult> GetBookingsByType([FromQuery] string? type)
-        {
-            var bookings = await _bookingService.GetBookingsAsync(type);
             return Ok(_mapper.Map<IEnumerable<BookingListDto>>(bookings));
         }
 
