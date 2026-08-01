@@ -20,17 +20,11 @@ namespace SportsFacility.Domain.Services
         public async Task<IEnumerable<Facility>> GetFacilitiesAsync()
         {
             return await _context.Facilities
-                .Include(f => f.Courts)
                 .ToListAsync();
         }
 
         public async Task<Facility> CreateFacilityAsync(Facility facility, int numberOfCourts)
         {
-            for (int i = 0; i < numberOfCourts; i++)
-            {
-                facility.Courts.Add(new Court { Name = $"Court {i + 1}", IsActive = true });
-            }
-            
             _context.Facilities.Add(facility);
             await _context.SaveChangesAsync();
             return facility;

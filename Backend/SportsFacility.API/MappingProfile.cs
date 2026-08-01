@@ -11,11 +11,10 @@ namespace SportsFacility.API
         {
             // Facility <-> ActivityDto
             CreateMap<Facility, ActivityDto>()
-                .ForMember(dest => dest.NumberOfCourts, opt => opt.MapFrom(src => src.Courts.Count))
+                .ForMember(dest => dest.NumberOfCourts, opt => opt.MapFrom(src => 1))
                 .ForMember(dest => dest.MaxMembersPerCourt, opt => opt.MapFrom(src => 4))
                 .ReverseMap()
-                .ForMember(dest => dest.Category, opt => opt.MapFrom(src => "General"))
-                .ForMember(dest => dest.Courts, opt => opt.Ignore());
+                .ForMember(dest => dest.Category, opt => opt.MapFrom(src => "General"));
 
             // SubscriptionPlan <-> MembershipPlanDto
             CreateMap<SubscriptionPlan, MembershipPlanDto>()
@@ -42,7 +41,8 @@ namespace SportsFacility.API
             // Booking <-> BookingListDto
             CreateMap<Booking, BookingListDto>()
                 .ForMember(dest => dest.CustomerName, opt => opt.MapFrom(src => src.User.FullName))
-                .ForMember(dest => dest.FacilityName, opt => opt.MapFrom(src => src.Court.Facility.Name))
+                .ForMember(dest => dest.FacilityName, opt => opt.MapFrom(src => src.Facility.Name))
+                .ForMember(dest => dest.ActivityId, opt => opt.MapFrom(src => src.FacilityId.ToString()))
                 .ForMember(dest => dest.Time, opt => opt.MapFrom(src => src.StartTime))
                 .ForMember(dest => dest.PaymentMode, opt => opt.MapFrom(src => src.PaymentStatus));
 

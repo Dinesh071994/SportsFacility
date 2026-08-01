@@ -14,7 +14,6 @@ namespace SportsFacility.Infrastructure.Data
         public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; } = null!;
         public DbSet<UserMembership> UserMemberships { get; set; } = null!;
         public DbSet<UserMembershipDependent> UserMembershipDependents { get; set; } = null!;
-        public DbSet<Court> Courts { get; set; } = null!;
         public DbSet<Booking> Bookings { get; set; } = null!;
         public DbSet<ClassSchedule> ClassSchedules { get; set; } = null!;
         public DbSet<ClassAttendance> ClassAttendances { get; set; } = null!;
@@ -62,13 +61,12 @@ namespace SportsFacility.Infrastructure.Data
                 .HasForeignKey(umd => umd.DependentUserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Court -> Facility
-            modelBuilder.Entity<Court>()
-                .HasOne(c => c.Facility)
-                .WithMany(f => f.Courts)
-                .HasForeignKey(c => c.FacilityId)
+            // Booking -> Facility
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.Facility)
+                .WithMany()
+                .HasForeignKey(b => b.FacilityId)
                 .OnDelete(DeleteBehavior.Restrict);
-
 
             // Booking -> User
             modelBuilder.Entity<Booking>()
@@ -110,7 +108,6 @@ namespace SportsFacility.Infrastructure.Data
             modelBuilder.Entity<Facility>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<SubscriptionPlan>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<UserMembership>().HasQueryFilter(x => !x.IsDeleted);
-            modelBuilder.Entity<Court>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<Booking>().HasQueryFilter(x => !x.IsDeleted);
             modelBuilder.Entity<ClassSchedule>().HasQueryFilter(x => !x.IsDeleted);
         }

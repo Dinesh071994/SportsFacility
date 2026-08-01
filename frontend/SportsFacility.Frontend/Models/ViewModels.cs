@@ -58,6 +58,7 @@ namespace SportsFacility.Frontend.Models
         public string Id { get; set; } = Guid.NewGuid().ToString();
         public string CustomerName { get; set; } = "";
         public string FacilityName { get; set; } = "";
+        public string ActivityId { get; set; } = "";
         public DateTime? Date { get; set; } = DateTime.Today;
         public TimeSpan? Time { get; set; } = new TimeSpan(12, 0, 0);
         public string TimeSlot => Time?.ToString(@"hh\:mm") ?? "";

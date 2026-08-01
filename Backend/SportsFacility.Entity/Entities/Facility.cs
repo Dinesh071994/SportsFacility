@@ -16,7 +16,6 @@ namespace SportsFacility.Entity.Entities
 
         // Navigation Properties
         public ICollection<SubscriptionPlan> SubscriptionPlans { get; set; } = new List<SubscriptionPlan>();
-        public ICollection<Court> Courts { get; set; } = new List<Court>();
         public ICollection<ClassSchedule> ClassSchedules { get; set; } = new List<ClassSchedule>();
     }
 }

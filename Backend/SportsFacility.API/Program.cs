@@ -42,7 +42,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("RenderCorsPolicy", policy =>
     {
-        policy.WithOrigins("https://sportsfacility.onrender.com") // No trailing slash!
+        policy.WithOrigins("https://sportsfacility.onrender.com", "https://localhost:7265") // No trailing slash!
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials(); // Required if you pass cookies, tokens, or sessions

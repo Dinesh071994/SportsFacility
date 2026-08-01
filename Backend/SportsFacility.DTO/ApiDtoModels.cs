@@ -73,6 +73,7 @@ namespace SportsFacility.DTO
         public string Id { get; set; } = string.Empty;
         public string CustomerName { get; set; } = string.Empty;
         public string FacilityName { get; set; } = string.Empty;
+        public string ActivityId { get; set; } = string.Empty;
         public DateTime? Date { get; set; }
         public TimeSpan? Time { get; set; }
         public string PaymentMode { get; set; } = string.Empty;

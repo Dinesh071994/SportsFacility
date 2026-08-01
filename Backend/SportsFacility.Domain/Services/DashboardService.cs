@@ -57,13 +57,13 @@ namespace SportsFacility.Domain.Services
 
             // 6. Upcoming Bookings
             var upcomingBookings = await _context.Bookings
-                .Include(b => b.Court)
+                .Include(b => b.Facility)
                 .Where(b => b.Date >= today)
                 .OrderBy(b => b.Date).ThenBy(b => b.StartTime)
                 .Take(5)
                 .Select(b => new
                 {
-                    Title = $"{b.Court.Name} - Booking",
+                    Title = $"{b.Facility.Name} - Booking",
                     Status = b.PaymentStatus == "Paid" ? "Confirmed" : "Pending Pay",
                     Time = $"{b.StartTime:hh\\:mm} - {b.EndTime:hh\\:mm}",
                     Type = "Walk-in"

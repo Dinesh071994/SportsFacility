@@ -54,10 +54,10 @@
     <DialogContent>
         <MudForm @ref="form">
             <MudTextField @bind-Value="currentBooking.CustomerName" Label="Customer Name" Required="true" Class="mb-3"/>
-            <MudSelect @bind-Value="currentBooking.FacilityName" Label="Facility" Required="true" Class="mb-3">
-                @foreach (var facility in FacilitiesList.Where(f => f.IsActive || f.Name == currentBooking.FacilityName))
+            <MudSelect @bind-Value="currentBooking.ActivityId" Label="Facility" Required="true" Class="mb-3">
+                @foreach (var facility in FacilitiesList.Where(f => f.IsActive || f.Id == currentBooking.ActivityId))
                 {
-                    <MudSelectItem Value="@facility.Name">@facility.Name</MudSelectItem>
+                    <MudSelectItem Value="@facility.Id">@facility.Name</MudSelectItem>
                 }
             </MudSelect>
             <MudDatePicker @bind-Date="currentBooking.Date" Label="Date" Required="true" Class="mb-3"/>
@@ -103,6 +103,14 @@
                 {
                     BookingsList = await Http.GetFromJsonAsync<List<BookingModel>>($"{NavManager.BaseUri}data/bookings.json") ?? new List<BookingModel>();
                     FacilitiesList = await Http.GetFromJsonAsync<List<ActivityModel>>($"{NavManager.BaseUri}data/activities.json") ?? new List<ActivityModel>();
+                    foreach (var booking in BookingsList)
+                    {
+                        if (string.IsNullOrEmpty(booking.ActivityId))
+                        {
+                            var fac = FacilitiesList.FirstOrDefault(f => f.Name == booking.FacilityName);
+                            booking.ActivityId = fac?.Id ?? "";
+                        }
+                    }
                 }
 
                 var ordered = BookingsList.OrderByDescending(b => b.ModifiedOn ?? b.Date).ToList();
@@ -139,9 +147,10 @@
     {
         currentBooking = new BookingModel
         {
-            PaymentMode = "Pending",
-            UTRNumber = "",
-            ModifiedOn = DateTime.UtcNow
+            Date = DateTime.Today,
+            Time = new TimeSpan(12, 0, 0),
+            ModifiedOn = DateTime.UtcNow,
+            ActivityId = ""
         };
         isEdit = false;
         _dialogVisible = true;
@@ -154,6 +163,7 @@
             Id = booking.Id,
             CustomerName = booking.CustomerName,
             FacilityName = booking.FacilityName,
+            ActivityId = booking.ActivityId,
             Date = booking.Date,
             Time = booking.Time,
             PaymentMode = booking.PaymentMode,
@@ -194,6 +204,9 @@
         await form.Validate();
         if (form.IsValid)
         {
+            var selectedFacility = FacilitiesList.FirstOrDefault(f => f.Id == currentBooking.ActivityId);
+            currentBooking.FacilityName = selectedFacility?.Name ?? "";
+
             currentBooking.ModifiedOn = DateTime.UtcNow;
             if (Config["DataSourceMode"] == "Api")
             {
