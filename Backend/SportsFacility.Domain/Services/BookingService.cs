@@ -74,47 +74,47 @@ namespace SportsFacility.Domain.Services
                 await _context.SaveChangesAsync();
             }
 
-            // 2. Resolve Court (find or create)
-            var court = await _context.Courts.Include(c => c.Facility).FirstOrDefaultAsync(c => c.Name == dto.FacilityName);
-            if (court == null)
-            {
-                // Create a default facility for the sport if not exists
-                var category = dto.FacilityName.Contains("Turf") ? "Football" : "Badminton";
-                var facilityName = dto.FacilityName.Contains("Turf") ? "Soccer Turf Arena" : "Badminton Arena";
+            //// 2. Resolve Court (find or create)
+            //var court = await _context.Courts.Include(c => c.Facility).FirstOrDefaultAsync(c => c.Name == dto.FacilityName);
+            //if (court == null)
+            //{
+            //    // Create a default facility for the sport if not exists
+            //    var category = dto.FacilityName.Contains("Turf") ? "Football" : "Badminton";
+            //    var facilityName = dto.FacilityName.Contains("Turf") ? "Soccer Turf Arena" : "Badminton Arena";
                 
-                var facility = await _context.Facilities.FirstOrDefaultAsync(f => f.Name == facilityName);
-                if (facility == null)
-                {
-                    facility = new Facility
-                    {
-                        Name = facilityName,
-                        Category = category,
-                        Capacity = 20,
-                        OpenTime = TimeSpan.FromHours(6),
-                        CloseTime = TimeSpan.FromHours(22),
-                        IsActive = true,
-                        CreatedBy = "System"
-                    };
-                    _context.Facilities.Add(facility);
-                    await _context.SaveChangesAsync();
-                }
+            //    var facility = await _context.Facilities.FirstOrDefaultAsync(f => f.Name == facilityName);
+            //    if (facility == null)
+            //    {
+            //        facility = new Facility
+            //        {
+            //            Name = facilityName,
+            //            Category = category,
+            //            Capacity = 20,
+            //            OpenTime = TimeSpan.FromHours(6),
+            //            CloseTime = TimeSpan.FromHours(22),
+            //            IsActive = true,
+            //            CreatedBy = "System"
+            //        };
+            //        _context.Facilities.Add(facility);
+            //        await _context.SaveChangesAsync();
+            //    }
 
-                court = new Court
-                {
-                    FacilityId = facility.Id,
-                    Name = dto.FacilityName,
-                    IsActive = true,
-                    CreatedBy = "System"
-                };
-                _context.Courts.Add(court);
-                await _context.SaveChangesAsync();
-            }
+            //    court = new Court
+            //    {
+            //        FacilityId = facility.Id,
+            //        Name = dto.FacilityName,
+            //        IsActive = true,
+            //        CreatedBy = "System"
+            //    };
+            //    _context.Courts.Add(court);
+            //    await _context.SaveChangesAsync();
+            //}
 
             var startTime = dto.Time ?? TimeSpan.FromHours(12);
             var booking = new Booking
             {
                 UserId = user.Id,
-                CourtId = court.Id,
+                //CourtId = court.Id,
                 Date = dto.Date ?? DateTime.UtcNow.Date,
                 StartTime = startTime,
                 EndTime = startTime.Add(TimeSpan.FromHours(1)),
