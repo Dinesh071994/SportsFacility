@@ -46,6 +46,7 @@ namespace SportsFacility.API.Controllers
             var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             Guid.TryParse(userIdStr, out var userId);
 
+            if(userId == Guid.Empty) return Unauthorized();
             var payment = await _paymentService.CreatePaymentAsync(dto, userId);
             if (payment == null) return BadRequest("Could not record payment");
 

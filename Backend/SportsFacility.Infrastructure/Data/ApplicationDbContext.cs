@@ -69,12 +69,6 @@ namespace SportsFacility.Infrastructure.Data
                 .HasForeignKey(c => c.FacilityId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Booking -> Court
-            modelBuilder.Entity<Booking>()
-                .HasOne(b => b.Court)
-                .WithMany(c => c.Bookings)
-                .HasForeignKey(b => b.CourtId)
-                .OnDelete(DeleteBehavior.Restrict);
 
             // Booking -> User
             modelBuilder.Entity<Booking>()

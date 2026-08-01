@@ -4,7 +4,7 @@ namespace SportsFacility.Entity.Entities
 {
     public class Booking : BaseEntity
     {
-        public Guid CourtId { get; set; }
+        public Guid? CourtId { get; set; }
         public Court Court { get; set; } = null!;
 
         public Guid UserId { get; set; }
