@@ -39,6 +39,13 @@ namespace SportsFacility.API.Controllers
             return Ok(_mapper.Map<IEnumerable<BookingListDto>>(bookings));
         }
 
+        [HttpGet]
+        public async Task<ActionResult> GetBookingsByType([FromQuery] string? type)
+        {
+            var bookings = await _bookingService.GetBookingsAsync(type);
+            return Ok(_mapper.Map<IEnumerable<BookingListDto>>(bookings));
+        }
+
         [HttpPost]
         public async Task<ActionResult<BookingListDto>> CreateBooking(BookingListDto dto)
         {

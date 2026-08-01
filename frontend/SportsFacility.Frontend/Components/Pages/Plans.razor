@@ -26,7 +26,7 @@
             </TemplateColumn>
             <PropertyColumn Property="x => x.Type" Title="Membership Type" />
             <PropertyColumn Property="x => x.BillingCycle" Title="Billing Cycle" />
-            <PropertyColumn Property="x => x.Price" Title="Price" Format="C2" />
+            <PropertyColumn Property="x => x.Price" Title="Price" Format="N2" />
             <TemplateColumn Title="Status">
                 <CellTemplate>
                     <MudChip T="string" Color="@(context.Item.IsActive ? Color.Success : Color.Error)" Size="Size.Small">

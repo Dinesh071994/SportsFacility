@@ -8,7 +8,7 @@ namespace SportsFacility.Domain.Interface
 {
     public interface IBookingService
     {
-        Task<IEnumerable<Booking>> GetBookingsAsync();
+        Task<IEnumerable<Booking>> GetBookingsAsync(string? type = null);
         Task<(IEnumerable<Booking> Items, int TotalCount)> GetPagedBookingsAsync(int pageNumber, int pageSize);
         Task<Booking?> CreateBookingAsync(BookingListDto dto);
         Task<bool> UpdateBookingAsync(Guid id, BookingListDto dto);

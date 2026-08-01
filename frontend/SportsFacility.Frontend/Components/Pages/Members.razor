@@ -67,6 +67,25 @@
                 }
             </MudSelect>
             <MudDatePicker @bind-Date="currentMember.ExpiryDateNullable" Label="Expiry Date" Required="true" Class="mb-3"/>
+            <MudCheckBox @bind-Value="receivePayment" Label="Receive Payment" Color="Color.Primary" Class="mb-3" />
+            
+            @if (receivePayment)
+            {
+                var selectedPlan = PlansList.FirstOrDefault(p => p.Name == currentMember.Plan);
+                decimal planPrice = selectedPlan?.Price ?? 0;
+                
+                <MudNumericField Value="planPrice" Label="Amount" ReadOnly="true" Format="N2" Class="mb-3" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentText="₹" />
+                
+                <MudSelect @bind-Value="paymentMode" Label="Payment Mode" Required="true" Class="mb-3">
+                    <MudSelectItem Value="@("Cash")" />
+                    <MudSelectItem Value="@("Online")" />
+                </MudSelect>
+                
+                @if (paymentMode == "Online")
+                {
+                    <MudTextField @bind-Value="utrNumber" Label="UTR Number" Required="true" Class="mb-3" />
+                }
+            }
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -143,10 +162,16 @@
     private MemberModel currentMember = new();
     private bool isEdit;
     private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
+    private bool receivePayment = false;
+    private string paymentMode = "Cash";
+    private string utrNumber = "";
 
     private void OpenAddDialog()
     {
         currentMember = new MemberModel { ExpiryDate = DateTime.Now.AddMonths(1), ModifiedOn = DateTime.UtcNow };
+        receivePayment = false;
+        paymentMode = "Cash";
+        utrNumber = "";
         isEdit = false;
         _dialogVisible = true;
     }
@@ -164,6 +189,9 @@
             QREntryCode = member.QREntryCode,
             ModifiedOn = DateTime.UtcNow
         };
+        receivePayment = false;
+        paymentMode = "Cash";
+        utrNumber = "";
         isEdit = true;
         _dialogVisible = true;
     }
@@ -227,6 +255,7 @@
                     ExpiryDate = currentMember.ExpiryDate
                 };
 
+                bool savedSuccessfully = false;
                 if (isEdit)
                 {
                     var response = await Http.PutAsJsonAsync($"members/{currentMember.Id}", dto);
@@ -242,6 +271,7 @@
                             existing.ExpiryDate = currentMember.ExpiryDate;
                         }
                         Snackbar.Add("Member updated successfully", Severity.Success);
+                        savedSuccessfully = true;
                     }
                 }
                 else
@@ -255,6 +285,28 @@
                             MembersList.Add(created);
                         }
                         Snackbar.Add("Member created successfully", Severity.Success);
+                        savedSuccessfully = true;
+                    }
+                }
+
+                if (savedSuccessfully && receivePayment && selectedPlan != null)
+                {
+                    var paymentDto = new
+                    {
+                        Date = DateTime.Today,
+                        Amount = selectedPlan.Price,
+                        Mode = paymentMode,
+                        UTR = paymentMode == "Online" ? utrNumber : "",
+                        Purpose = $"Membership Purchase: {currentMember.Name} - {currentMember.Plan}"
+                    };
+                    var payResponse = await Http.PostAsJsonAsync("payments", paymentDto);
+                    if (payResponse.IsSuccessStatusCode)
+                    {
+                        Snackbar.Add("Payment recorded successfully", Severity.Success);
+                    }
+                    else
+                    {
+                        Snackbar.Add("Failed to record payment", Severity.Warning);
                     }
                 }
             }
@@ -275,6 +327,12 @@
                 else
                 {
                     MembersList.Add(currentMember);
+                }
+
+                if (receivePayment)
+                {
+                    var selectedPlan = PlansList.FirstOrDefault(p => p.Name == currentMember.Plan);
+                    Snackbar.Add($"[Local Mode] Received payment of {(selectedPlan?.Price ?? 0):N2} via {paymentMode}", Severity.Success);
                 }
             }
             if (grid != null)

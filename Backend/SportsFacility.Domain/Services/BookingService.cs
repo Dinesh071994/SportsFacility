@@ -19,14 +19,24 @@ namespace SportsFacility.Domain.Services
             _context = context;
         }
 
-        public async Task<IEnumerable<Booking>> GetBookingsAsync()
+        public async Task<IEnumerable<Booking>> GetBookingsAsync(string? type = null)
         {
-            return await _context.Bookings
+            var query = _context.Bookings
                 .Include(b => b.User)
                 .Include(b => b.Court)
                     .ThenInclude(c => c.Facility)
-                .OrderByDescending(b => b.ModifiedOn ?? b.CreatedOn)
-                .ToListAsync();
+                .OrderByDescending(b => b.ModifiedOn ?? b.CreatedOn);
+
+            if (type == "Pending")
+            {
+                query = (IOrderedQueryable<Booking>)query.Where(b => b.PaymentStatus == "Pending");
+            }
+            else if (type == "Paid")
+            {
+                query = (IOrderedQueryable<Booking>)query.Where(b => b.PaymentStatus == "Paid");
+            }
+
+            return await query.ToListAsync();
         }
 
         public async Task<(IEnumerable<Booking> Items, int TotalCount)> GetPagedBookingsAsync(int pageNumber, int pageSize)
