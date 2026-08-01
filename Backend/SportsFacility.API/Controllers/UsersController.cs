@@ -13,9 +13,9 @@ namespace SportsFacility.API.Controllers
         private readonly IUserService _userService;
         private readonly IMapper _mapper;
 
-        public UsersController(IUserService _userService, IMapper mapper)
+        public UsersController(IUserService userService, IMapper mapper)
         {
-            this._userService = _userService;
+            _userService = userService;
             _mapper = mapper;
         }
 
@@ -65,6 +65,30 @@ namespace SportsFacility.API.Controllers
             if (!result) return NotFound();
 
             return Ok(new { Message = "Password reset successfully" });
+        }
+
+        public class ProfilePictureDto
+        {
+            public string Email { get; set; } = string.Empty;
+            public string PicturePath { get; set; } = string.Empty;
+        }
+
+        [HttpGet("profile")]
+        public async Task<ActionResult<StaffListDto>> GetUserProfile([FromQuery] string email)
+        {
+            var user = await _userService.GetUserByEmailAsync(email);
+            if (user == null) return NotFound("User not found");
+
+            return Ok(_mapper.Map<StaffListDto>(user));
+        }
+
+        [HttpPost("profile/picture")]
+        public async Task<IActionResult> UpdateProfilePicture([FromBody] ProfilePictureDto dto)
+        {
+            var result = await _userService.UpdateProfilePictureAsync(dto.Email, dto.PicturePath);
+            if (!result) return NotFound("User not found");
+
+            return Ok(new { Message = "Profile picture updated successfully" });
         }
     }
 }

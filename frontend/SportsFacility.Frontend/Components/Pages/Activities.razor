@@ -118,7 +118,7 @@
 
     private async Task Save()
     {
-        await activityForm.Validate();
+        await activityForm.ValidateAsync();
         if (activityForm.IsValid)
         {
             // Default backend values that are now removed from UI
@@ -220,7 +220,7 @@
 
     private async Task SaveMembership()
     {
-        await membershipForm.Validate();
+        await membershipForm.ValidateAsync();
         if (membershipForm.IsValid)
         {
             if (Config["DataSourceMode"] == "Api")

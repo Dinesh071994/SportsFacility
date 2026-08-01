@@ -17,6 +17,7 @@ namespace SportsFacility.Entity.Entities
         public bool IsActive { get; set; } = true;
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiry { get; set; }
+        public string? ProfilePicture { get; set; }
 
         // Navigation Properties
         public ICollection<UserMembership> PrimaryMemberships { get; set; } = new List<UserMembership>();

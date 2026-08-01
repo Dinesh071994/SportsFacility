@@ -201,7 +201,7 @@
 
     private async Task Save()
     {
-        await form.Validate();
+        await form.ValidateAsync();
         if (form.IsValid)
         {
             var selectedFacility = FacilitiesList.FirstOrDefault(f => f.Id == currentBooking.ActivityId);

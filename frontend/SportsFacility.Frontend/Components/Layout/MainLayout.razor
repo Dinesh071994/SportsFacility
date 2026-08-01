@@ -15,8 +15,12 @@
 
         <AuthorizeView>
             <Authorized>
-                <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Class="mr-3">A</MudAvatar>
-                <MudText Typo="Typo.body2" Class="mr-4">Admin User</MudText>
+                <MudLink Href="/profile" Style="color: inherit; text-decoration: none;" Class="d-flex align-center mr-4">
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Class="mr-3">
+                        @(context.User.Identity?.Name?.FirstOrDefault().ToString().ToUpper() ?? "U")
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Style="color: white; font-weight: 500;">@context.User.Identity?.Name</MudText>
+                </MudLink>
                 <MudButton Color="Color.Error" Variant="Variant.Text" Href="/login">Logout</MudButton>
             </Authorized>
             <NotAuthorized>
@@ -27,10 +31,24 @@
     <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always" Style="background-color: var(--mud-palette-drawer-background); border-right: 1px solid rgba(255,255,255,0.05);">
         <NavMenu />
     </MudDrawer>
-    <MudMainContent Style="background-color: var(--mud-palette-background); min-height: 100vh;">
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-4 pt-4">
+    <MudMainContent Style="background-color: var(--mud-palette-background); min-height: 100vh; display: flex; flex-direction: column;">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="my-4 pt-4" Style="flex: 1;">
             @Body
         </MudContainer>
+        
+        <!-- Sticky Footer -->
+        <footer style="background: rgba(30, 30, 45, 0.4); border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 1.5rem 0; margin-top: auto; text-align: center;">
+            <MudContainer MaxWidth="MaxWidth.ExtraLarge">
+                <div class="d-flex flex-column flex-sm-row justify-between align-center px-4">
+                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.4);">
+                        &copy; @DateTime.Now.Year SFM PRO.  All Rights Reserved. 
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="color: rgba(255,255,255,0.4);" Class="mt-2 mt-sm-0">
+                        Software by <a href="https://dineshmahenderkar-portfolio.vercel.app/" target="_blank" style="color: var(--mud-palette-primary); text-decoration: none; font-weight: 500; transition: color 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='var(--mud-palette-primary)'">Dinesh</a>
+                    </MudText>
+                </div>
+            </MudContainer>
+        </footer>
     </MudMainContent>
 </MudLayout>
 

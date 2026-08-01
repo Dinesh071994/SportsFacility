@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <NoWarn>$(NoWarn);CS8618;CS8603;CS0649;CS0414;MUD0002</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

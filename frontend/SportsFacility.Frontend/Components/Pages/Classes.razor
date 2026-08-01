@@ -146,7 +146,7 @@
 
     private async Task Save()
     {
-        await form.Validate();
+        await form.ValidateAsync();
         if (form.IsValid)
         {
             if (Config["DataSourceMode"] == "Api")

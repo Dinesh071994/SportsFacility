@@ -118,6 +118,7 @@ namespace SportsFacility.Frontend.Models
         public string Email { get; set; } = "";
         public string Role { get; set; } = "Staff";
         public bool IsActive { get; set; } = true;
+        public string? ProfilePicture { get; set; }
     }
 
     public class MemberCreateDto

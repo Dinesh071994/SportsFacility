@@ -2,10 +2,15 @@
 @using MudBlazor
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
+@using System.IO
+@using Microsoft.AspNetCore.Hosting
+@using SportsFacility.Frontend.Models
 @inject AuthenticationStateProvider AuthStateProvider
 @inject HttpClient Http
 @inject ISnackbar Snackbar
 @inject IConfiguration Config
+@inject IWebHostEnvironment Env
+@inject NavigationManager NavManager
 
 <PageTitle>My Profile</PageTitle>
 
@@ -14,12 +19,36 @@
 <MudGrid>
     <MudItem xs="12" md="4">
         <MudPaper Class="pa-4 text-center rounded-xl" Elevation="4">
-            <MudAvatar Color="Color.Primary" Style="height:100px; width:100px; font-size: 3rem;" Class="mb-4">
-                @(UserName?.FirstOrDefault().ToString() ?? "U")
-            </MudAvatar>
+            @if (!string.IsNullOrEmpty(ProfilePictureUrl))
+            {
+                <div class="d-flex justify-center mb-4">
+                    <MudImage Src="@ProfilePictureUrl" Alt="Profile Picture" Style="height:150px; width:150px; border-radius: 50%; object-fit: cover;" Elevation="3" />
+                </div>
+            }
+            else
+            {
+                <div class="d-flex justify-center mb-4">
+                    <MudAvatar Color="Color.Primary" Style="height:150px; width:150px; font-size: 4rem;">
+                        @(UserName?.FirstOrDefault().ToString().ToUpper() ?? "U")
+                    </MudAvatar>
+                </div>
+            }
             <MudText Typo="Typo.h5" Class="font-weight-bold">@UserName</MudText>
             <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">@UserRole</MudText>
-            <MudChip T="string" Color="Color.Success" Size="Size.Small">Active Account</MudChip>
+               <MudFileUpload T="IBrowserFile"
+                           OnFilesChanged="UploadProfilePicture"
+                           Accept=".jpg,.jpeg,.png">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.CloudUpload"
+                           Size="Size.Small">
+                    Upload Picture
+                </MudButton>
+            </MudFileUpload>
+
+            <div>
+                <MudChip T="string" Color="Color.Success" Size="Size.Small">Active Account</MudChip>
+            </div>
         </MudPaper>
     </MudItem>
     <MudItem xs="12" md="8">
@@ -31,7 +60,7 @@
                 <MudTextField Value="@UserRole" Label="System Role" ReadOnly="true" Variant="Variant.Outlined" Class="mb-4" />
                 
                 <MudText Typo="Typo.h6" Class="mt-6 mb-2">Security</MudText>
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.LockReset" OnClick="OpenResetPasswordDialog">Change Password</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.LockReset" OnClick="OpenResetPasswordDialog" Class="rounded-lg">Change Password</MudButton>
             </MudForm>
         </MudPaper>
     </MudItem>
@@ -42,7 +71,7 @@
         <MudForm @ref="_form">
             <MudTextField T="string" @bind-Value="_currentPassword" Label="Current Password" InputType="InputType.Password" Required="true" Class="mb-3"/>
             <MudTextField T="string" @bind-Value="_newPassword" Label="New Password" InputType="InputType.Password" Required="true" Class="mb-3"/>
-            <MudTextField T="string" @bind-Value="_confirmPassword" Label="Confirm New Password" InputType="InputType.Password" Required="true" Validation="@(new Func<string, string>(PasswordMatch))" Class="mb-3"/>
+            <MudTextField T="string" @bind-Value="_confirmPassword" Label="Confirm New Password" InputType="InputType.Password" Required="true" Validation="@(new Func<string, string?>(PasswordMatch))" Class="mb-3"/>
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -55,9 +84,10 @@
     private string UserName = "Loading...";
     private string UserRole = "Loading...";
     private string UserEmail = "Loading...";
+    private string? ProfilePictureUrl;
 
     private bool _dialogVisible;
-    private MudForm _form;
+    private MudForm? _form;
     private DialogOptions _dialogOptions = new() { MaxWidth = MaxWidth.Small, FullWidth = true };
 
     private string _currentPassword = "";
@@ -74,6 +104,93 @@
             UserName = user.Identity.Name ?? "Unknown";
             UserEmail = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email || c.Type == "email" || c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")?.Value ?? "admin@sportsfacility.com";
             UserRole = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "http://schemas.microsoft.com/ws/2008/06/identity/claims/role")?.Value ?? "Staff";
+
+            if (Config["DataSourceMode"] == "Api")
+            {
+                try
+                {
+                    var profile = await Http.GetFromJsonAsync<UserModel>($"users/profile?email={UserEmail}");
+                    if (profile != null)
+                    {
+                        ProfilePictureUrl = profile.ProfilePicture;
+                    }
+                }
+                catch
+                {
+                    // Fallback if endpoint fails
+                }
+            }
+        }
+    }
+
+@using Microsoft.AspNetCore.Components.Forms
+
+    private async Task UploadProfilePicture(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        // 1. Validate File Size (<= 5MB)
+        long maxFileSize = 5 * 1024 * 1024; // 5MB
+        if (file.Size > maxFileSize)
+        {
+            Snackbar.Add("File size exceeds the 5MB limit.", Severity.Error);
+            return;
+        }
+
+        // 2. Validate File Extension (png, jpg, jpeg)
+        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg" };
+        if (!allowedExtensions.Contains(extension))
+        {
+            Snackbar.Add("Invalid file type. Only PNG, JPG, and JPEG are allowed.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            // 3. Save file inside wwwroot/profile/
+            var originalFileName = Path.GetFileNameWithoutExtension(file.Name);
+            var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+            var newFileName = $"{originalFileName}_{timestamp}{extension}";
+            
+            var uploadsFolder = Path.Combine(Env.WebRootPath, "profile");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            var filePath = Path.Combine(uploadsFolder, newFileName);
+
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.OpenReadStream(maxFileSize).CopyToAsync(fileStream);
+            }
+
+            var relativePath = $"profile/{newFileName}";
+
+            if (Config["DataSourceMode"] == "Api")
+            {
+                var response = await Http.PostAsJsonAsync("users/profile/picture", new { Email = UserEmail, PicturePath = relativePath });
+                if (response.IsSuccessStatusCode)
+                {
+                    ProfilePictureUrl = relativePath;
+                    Snackbar.Add("Profile picture uploaded successfully!", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add("Failed to update profile picture in database.", Severity.Error);
+                }
+            }
+            else
+            {
+                ProfilePictureUrl = relativePath;
+                Snackbar.Add("Profile picture uploaded successfully (Mock Mode)!", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Upload failed: {ex.Message}", Severity.Error);
         }
     }
 
@@ -90,7 +207,7 @@
         _dialogVisible = false;
     }
 
-    private string PasswordMatch(string arg)
+    private string? PasswordMatch(string arg)
     {
         if (_newPassword != arg)
             return "Passwords do not match";
@@ -99,34 +216,37 @@
 
     private async Task SaveNewPassword()
     {
-        await _form.Validate();
-        if (_form.IsValid)
+        if (_form != null)
         {
-            if (Config["DataSourceMode"] == "Api")
+            await _form.ValidateAsync();
+            if (_form.IsValid)
             {
-                var payload = new
+                if (Config["DataSourceMode"] == "Api")
                 {
-                    Email = UserEmail,
-                    CurrentPassword = _currentPassword,
-                    NewPassword = _newPassword
-                };
+                    var payload = new
+                    {
+                        Email = UserEmail,
+                        CurrentPassword = _currentPassword,
+                        NewPassword = _newPassword
+                    };
 
-                var response = await Http.PostAsJsonAsync("auth/change-password", payload);
-                if (response.IsSuccessStatusCode)
-                {
-                    Snackbar.Add("Password updated successfully!", Severity.Success);
-                    _dialogVisible = false;
+                    var response = await Http.PostAsJsonAsync("auth/change-password", payload);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        Snackbar.Add("Password updated successfully!", Severity.Success);
+                        _dialogVisible = false;
+                    }
+                    else
+                    {
+                        var error = await response.Content.ReadAsStringAsync();
+                        Snackbar.Add(string.IsNullOrEmpty(error) ? "Failed to change password. Verify your current password." : error, Severity.Error);
+                    }
                 }
                 else
                 {
-                    var error = await response.Content.ReadAsStringAsync();
-                    Snackbar.Add(string.IsNullOrEmpty(error) ? "Failed to change password. Verify your current password." : error, Severity.Error);
+                    Snackbar.Add("Password updated successfully (Mock Mode)!", Severity.Success);
+                    _dialogVisible = false;
                 }
-            }
-            else
-            {
-                Snackbar.Add("Password updated successfully (Mock Mode)!", Severity.Success);
-                _dialogVisible = false;
             }
         }
     }

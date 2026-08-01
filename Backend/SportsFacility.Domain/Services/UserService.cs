@@ -75,5 +75,22 @@ namespace SportsFacility.Domain.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<User?> GetUserByEmailAsync(string email)
+        {
+            var cleanedEmail = email?.Trim().ToLower() ?? string.Empty;
+            return await _context.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == cleanedEmail);
+        }
+
+        public async Task<bool> UpdateProfilePictureAsync(string email, string picturePath)
+        {
+            var cleanedEmail = email?.Trim().ToLower() ?? string.Empty;
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == cleanedEmail);
+            if (user == null) return false;
+
+            user.ProfilePicture = picturePath;
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }

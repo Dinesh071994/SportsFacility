@@ -13,5 +13,7 @@ namespace SportsFacility.Domain.Interface
         Task<bool> UpdateUserAsync(Guid id, StaffListDto dto);
         Task<bool> DeleteUserAsync(Guid id);
         Task<bool> ResetPasswordAsync(Guid id, string newPassword);
+        Task<User?> GetUserByEmailAsync(string email);
+        Task<bool> UpdateProfilePictureAsync(string email, string picturePath);
     }
 }
