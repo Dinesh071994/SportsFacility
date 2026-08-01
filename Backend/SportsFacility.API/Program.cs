@@ -37,18 +37,18 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-
-
 // Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("RenderCorsPolicy", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins("https://sportsfacility.onrender.com/") // No trailing slash!
+              .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowCredentials(); // Required if you pass cookies, tokens, or sessions
     });
 });
+
 
 // Database configuration
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -106,7 +106,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+app.UseCors("RenderCorsPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 
